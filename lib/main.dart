@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app/cartoon_ui.dart';
 import 'app/theme.dart';
 import 'app/localization.dart';
 import 'core/ads/ads_bootstrap.dart';
@@ -95,73 +96,141 @@ class _SplashGateState extends State<_SplashGate>
     if (_ready) return BlockoraHomeScreen(cubit: widget.gameCubit);
     return Scaffold(
       body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xff122b78), Color(0xff4c2174), Color(0xff0d123d)],
-          ),
-        ),
-        child: Center(
-          child: FadeTransition(
-            opacity: CurvedAnimation(
-              parent: _controller,
-              curve: Curves.easeOut,
+        decoration: cartoonBackground(),
+        child: Stack(
+          children: [
+            const Positioned(
+              left: -20,
+              top: 120,
+              child: _SplashBlock(color: Color(0xff54c8ed), angle: -.18),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 86,
-                  height: 86,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [PrismColors.cyan, PrismColors.violet],
+            const Positioned(
+              right: -12,
+              top: 220,
+              child: _SplashBlock(color: Color(0xff9bd528), angle: .15),
+            ),
+            const Positioned(
+              left: 32,
+              bottom: 110,
+              child: _SplashBlock(color: Color(0xffffd43e), angle: .10),
+            ),
+            Center(
+              child: FadeTransition(
+                opacity: CurvedAnimation(
+                  parent: _controller,
+                  curve: Curves.easeOut,
+                ),
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: .82, end: 1).animate(
+                    CurvedAnimation(
+                      parent: _controller,
+                      curve: Curves.easeOutBack,
                     ),
-                    borderRadius: BorderRadius.circular(27),
-                    boxShadow: [
-                      BoxShadow(
-                        color: PrismColors.cyan.withValues(alpha: .32),
-                        blurRadius: 28,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 102,
+                        height: 102,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xffb8e62d), Color(0xff68a40e)],
+                          ),
+                          borderRadius: BorderRadius.circular(31),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: .65),
+                            width: 3,
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x55000000),
+                              blurRadius: 9,
+                              offset: Offset(5, 8),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.grid_view_rounded,
+                          color: Colors.white,
+                          size: 54,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'BLOCKORA',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 34,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 4,
+                          shadows: [
+                            Shadow(
+                              color: Color(0xffef3f8f),
+                              offset: Offset(0, 4),
+                            ),
+                            Shadow(
+                              color: Color(0x55000000),
+                              blurRadius: 4,
+                              offset: Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const CartoonRibbon(
+                        text: 'COLOR PUZZLE',
+                        width: 230,
+                      ),
+                      const SizedBox(height: 22),
+                      const SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 4,
+                          color: Colors.white,
+                        ),
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.auto_awesome_rounded,
-                    color: PrismColors.midnight,
-                    size: 43,
-                  ),
                 ),
-                const SizedBox(height: 24),
-                const Text(
-                  'BLOCKORA',
-                  style: TextStyle(
-                    fontSize: 27,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Find your next bright move',
-                  style: TextStyle(color: PrismColors.muted, fontSize: 13),
-                ),
-                const SizedBox(height: 28),
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: PrismColors.yellow,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
+}
+
+class _SplashBlock extends StatelessWidget {
+  const _SplashBlock({required this.color, required this.angle});
+
+  final Color color;
+  final double angle;
+
+  @override
+  Widget build(BuildContext context) => Transform.rotate(
+    angle: angle,
+    child: Container(
+      width: 74,
+      height: 74,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: .45), width: 2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x44000000),
+            blurRadius: 7,
+            offset: Offset(5, 7),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class GameScreenWithCubit extends StatelessWidget {
