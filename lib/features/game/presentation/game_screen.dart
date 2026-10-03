@@ -42,9 +42,13 @@ class _GameScreenState extends State<GameScreen>
   late final AnimationController _pickupController;
   int _lastTurnId = 0;
   late final ValueNotifier<DragVisual?> _dragVisual;
+  late final ValueNotifier<int> _boardPreviewVersion;
   late final Listenable _boardRepaint;
   List<ClearParticle> _clearParticles = const [];
   BoardGeometry? _boardGeometry;
+  RenderBox? _dragStackBox;
+  RenderBox? _dragBoardBox;
+  Board? _dragBoardSnapshot;
   final bool _debugCoordinates = false;
 
   @override
@@ -52,6 +56,7 @@ class _GameScreenState extends State<GameScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _dragVisual = ValueNotifier<DragVisual?>(null);
+    _boardPreviewVersion = ValueNotifier<int>(0);
     unawaited(BlockSkin.instance.preload());
     _clearController = AnimationController(
       vsync: this,
@@ -69,7 +74,10 @@ class _GameScreenState extends State<GameScreen>
       vsync: this,
       duration: GameFeelConfig.pickup,
     );
-    _boardRepaint = Listenable.merge([_dragVisual, _clearController]);
+    _boardRepaint = Listenable.merge([
+      _boardPreviewVersion,
+      _clearController,
+    ]);
     _clearController.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted) {
         context.read<GameCubit>().finishClear();
@@ -92,6 +100,7 @@ class _GameScreenState extends State<GameScreen>
     _messageController.dispose();
     _pickupController.dispose();
     _dragVisual.dispose();
+    _boardPreviewVersion.dispose();
     super.dispose();
   }
 
@@ -143,7 +152,11 @@ class _GameScreenState extends State<GameScreen>
       return;
     }
     final stack = _stackKey.currentContext?.findRenderObject() as RenderBox?;
-    if (stack == null) return;
+    final board = _boardKey.currentContext?.findRenderObject() as RenderBox?;
+    if (stack == null || board == null || _boardGeometry == null) return;
+    _dragStackBox = stack;
+    _dragBoardBox = board;
+    _dragBoardSnapshot = state.board;
     _dragVisual.value = DragVisual(
       index: index,
       piece: state.pieces[index]!,
@@ -157,11 +170,17 @@ class _GameScreenState extends State<GameScreen>
   void _updateDrag(Offset globalPosition) {
     final drag = _dragVisual.value;
     if (drag == null) return;
-    final stack = _stackKey.currentContext?.findRenderObject() as RenderBox?;
-    final board = _boardKey.currentContext?.findRenderObject() as RenderBox?;
+    final stack = _dragStackBox;
+    final board = _dragBoardBox;
+    final boardSnapshot = _dragBoardSnapshot;
     final piece = drag.piece;
     final geometry = _boardGeometry;
-    if (stack == null || board == null || geometry == null) return;
+    if (stack == null ||
+        board == null ||
+        boardSnapshot == null ||
+        geometry == null) {
+      return;
+    }
     final stackPosition = stack.globalToLocal(globalPosition);
     final boardPosition = board.globalToLocal(globalPosition);
     final cell = geometry.cellSize;
@@ -180,25 +199,34 @@ class _GameScreenState extends State<GameScreen>
               cell)
           .round(),
     );
+
+    if (origin == drag.origin) {
+      _dragVisual.value = drag.copyWith(position: stackPosition);
+      return;
+    }
+
+    final valid = evaluatePlacement(boardSnapshot, piece, origin).valid;
     _dragVisual.value = drag.copyWith(
       position: stackPosition,
       origin: origin,
-      valid: evaluatePlacement(
-        context.read<GameCubit>().state.board,
-        piece,
-        origin,
-      ).valid,
+      valid: valid,
     );
+    _boardPreviewVersion.value++;
   }
 
   void _endDrag() {
     final drag = _dragVisual.value;
+    _dragVisual.value = null;
+    _boardPreviewVersion.value++;
+    _dragStackBox = null;
+    _dragBoardBox = null;
+    _dragBoardSnapshot = null;
+
     if (drag != null && drag.origin != null) {
       context.read<GameCubit>().drop(index: drag.index, origin: drag.origin!);
     } else {
       context.read<GameCubit>().cancelDrag();
     }
-    _dragVisual.value = null;
   }
 
   Future<void> _showSettings() async {
@@ -498,6 +526,14 @@ class _GameContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final board = state.board;
     final turn = state.turn;
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    final turnDrawData = turn == null || state.status != GameStatus.clearing
+        ? null
+        : TurnDrawData(
+            clearCells: turn.clearCells,
+            rows: _lineRows(turn.clearCells),
+            columns: _lineColumns(turn.clearCells),
+          );
     final header = RepaintBoundary(
       child: _Header(
         state: state,
@@ -569,21 +605,11 @@ class _GameContent extends StatelessWidget {
                             painter: BoardEffectsPainter(
                               geometry: geometry,
                               board: board,
-                              reducedMotion: MediaQuery.disableAnimationsOf(
-                                context,
-                              ),
+                              reducedMotion: reducedMotion,
                               previewPiece: drag?.piece,
                               previewOrigin: drag?.origin,
                               previewValid: drag?.valid ?? false,
-                              turn:
-                                  turn == null ||
-                                      state.status != GameStatus.clearing
-                                  ? null
-                                  : TurnDrawData(
-                                      clearCells: turn.clearCells,
-                                      rows: _lineRows(turn.clearCells),
-                                      columns: _lineColumns(turn.clearCells),
-                                    ),
+                              turn: turnDrawData,
                               clearProgress: clearController.value,
                               particles: clearParticles,
                             ),
