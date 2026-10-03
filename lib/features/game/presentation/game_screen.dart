@@ -17,6 +17,7 @@ import '../domain/mode_catalog.dart';
 import '../domain/models.dart';
 import 'combo_overlay.dart';
 import 'painters/board_painters.dart';
+import 'painters/block_skin.dart';
 import 'painters/game_painters.dart';
 
 class GameScreen extends StatefulWidget {
@@ -38,7 +39,6 @@ class _GameScreenState extends State<GameScreen>
   late final AnimationController _clearController;
   late final AnimationController _floatController;
   late final AnimationController _messageController;
-  late final AnimationController _heartController;
   late final AnimationController _pickupController;
   int _lastTurnId = 0;
   late final ValueNotifier<DragVisual?> _dragVisual;
@@ -52,6 +52,7 @@ class _GameScreenState extends State<GameScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _dragVisual = ValueNotifier<DragVisual?>(null);
+    unawaited(BlockSkin.instance.preload());
     _clearController = AnimationController(
       vsync: this,
       duration: GameFeelConfig.clearTotal,
@@ -64,10 +65,6 @@ class _GameScreenState extends State<GameScreen>
       vsync: this,
       duration: GameFeelConfig.praise,
     );
-    _heartController = AnimationController(
-      vsync: this,
-      duration: GameFeelConfig.heartPulse,
-    );
     _pickupController = AnimationController(
       vsync: this,
       duration: GameFeelConfig.pickup,
@@ -78,6 +75,13 @@ class _GameScreenState extends State<GameScreen>
         context.read<GameCubit>().finishClear();
       }
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final state = context.read<GameCubit>().state;
+      if (state.status == GameStatus.clearing) {
+        _onStateChanged(context, state);
+      }
+    });
   }
 
   @override
@@ -86,7 +90,6 @@ class _GameScreenState extends State<GameScreen>
     _clearController.dispose();
     _floatController.dispose();
     _messageController.dispose();
-    _heartController.dispose();
     _pickupController.dispose();
     _dragVisual.dispose();
     super.dispose();
@@ -103,11 +106,24 @@ class _GameScreenState extends State<GameScreen>
 
   void _onStateChanged(BuildContext context, GameState state) {
     final turn = state.turn;
-    if (turn == null || turn.id == _lastTurnId) {
+    if (turn == null) {
+      _lastTurnId = 0;
+      _clearController.reset();
+      _floatController.reset();
+      _messageController.reset();
+      return;
+    }
+    if (turn.id == _lastTurnId) {
       return;
     }
     _lastTurnId = turn.id;
-    _clearParticles = turn.lines == 0
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    _clearController.duration = reducedMotion
+        ? const Duration(milliseconds: 120)
+        : Duration(
+            milliseconds: 580 + math.min(3, math.max(0, turn.lines - 1)) * 70,
+          );
+    _clearParticles = turn.lines == 0 || reducedMotion
         ? const []
         : buildClearParticles(
             cells: turn.clearCells,
@@ -116,7 +132,6 @@ class _GameScreenState extends State<GameScreen>
           );
     _floatController.forward(from: 0);
     if (turn.praise != null) _messageController.forward(from: 0);
-    if (turn.heart) _heartController.forward(from: 0);
     if (state.status == GameStatus.clearing) _clearController.forward(from: 0);
   }
 
@@ -262,105 +277,144 @@ class _GameScreenState extends State<GameScreen>
                 ),
               ),
               child: SafeArea(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isTablet =
-                        constraints.maxWidth >= 600 &&
-                        constraints.maxHeight >= 600;
-                    final contentWidth = isTablet
-                        ? math.min(constraints.maxWidth, _tabletContentMaxWidth)
-                        : constraints.maxWidth;
-                    final boardWidth = math.min(
-                      contentWidth - 34,
-                      math.min(
-                        isTablet ? _tabletBoardMaxSize : 352.0,
-                        constraints.maxHeight * (isTablet ? .58 : .48),
-                      ),
-                    );
-                    final innerBoardSize =
-                        boardWidth - BoardGeometry.contentInset * 2;
-                    if (_boardGeometry == null ||
-                        _boardGeometry!.size != innerBoardSize) {
-                      _boardGeometry = BoardGeometry.fromSize(innerBoardSize);
-                    }
-                    final boardGeometry = _boardGeometry!;
-                    return Stack(
-                      key: _stackKey,
-                      children: [
-                        Align(
-                          alignment: Alignment.topCenter,
-                          child: SizedBox(
-                            width: contentWidth,
-                            child: _GameContent(
-                              state: state,
-                              boardKey: _boardKey,
-                              boardSize: boardWidth,
-                              geometry: boardGeometry,
-                              debugCoordinates: _debugCoordinates,
-                              onBack: () => unawaited(_handleBack()),
-                              onSettings: _showSettings,
-                              onDragStart: _startDrag,
-                              onDragUpdate: _updateDrag,
-                              onDragEnd: _endDrag,
-                              dragVisual: _dragVisual,
-                              boardRepaint: _boardRepaint,
-                              clearController: _clearController,
-                              floatController: _floatController,
-                              messageController: _messageController,
-                              heartController: _heartController,
-                              clearParticles: _clearParticles,
-                            ),
-                          ),
-                        ),
-                        if (state.status == GameStatus.playing ||
-                            state.status == GameStatus.clearing)
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            child: SafeArea(
-                              top: false,
-                              child: AdsBannerSlot(
-                                ads: context.read<GameCubit>().ads,
-                                placement: AdPlacement.gameplay,
-                              ),
-                            ),
-                          ),
-                        ValueListenableBuilder<DragVisual?>(
-                          valueListenable: _dragVisual,
-                          builder: (context, drag, child) {
-                            if (drag == null) return const SizedBox.shrink();
-                            return AnimatedBuilder(
-                              animation: _pickupController,
-                              builder: (context, child) => _DraggedPiece(
-                                piece: drag.piece,
-                                position: drag.position,
-                                cellSize: boardGeometry.cellSize,
-                                scale:
-                                    1 +
-                                    Curves.easeOut.transform(
-                                          _pickupController.value,
-                                        ) *
-                                        .06,
-                              ),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final landscape =
+                              constraints.maxWidth > constraints.maxHeight &&
+                              constraints.maxHeight < 600;
+                          final compact = constraints.maxHeight < 650;
+                          final scoreHeight =
+                              landscape && constraints.maxHeight < 300
+                              ? 48.0
+                              : compact
+                              ? 64.0
+                              : 90.0;
+                          final trayHeight =
+                              landscape && constraints.maxHeight < 320
+                              ? 64.0
+                              : compact
+                              ? 80.0
+                              : 108.0;
+                          final isTablet =
+                              constraints.maxWidth >= 600 && !landscape;
+                          final contentWidth = landscape
+                              ? constraints.maxWidth
+                              : math.min(
+                                  constraints.maxWidth,
+                                  _tabletContentMaxWidth,
+                                );
+                          final verticalBudget =
+                              constraints.maxHeight -
+                              (62 +
+                                  scoreHeight +
+                                  trayHeight +
+                                  82 +
+                                  (state.session.mode == GameMode.classic
+                                      ? 0
+                                      : 70));
+                          final boardWidth = landscape
+                              ? math.min(
+                                  constraints.maxHeight - 24,
+                                  constraints.maxWidth * .48 - 34,
+                                )
+                              : math.min(
+                                  contentWidth - 34,
+                                  math.min(
+                                    isTablet ? _tabletBoardMaxSize : 352.0,
+                                    math.max(80.0, verticalBudget),
+                                  ),
+                                );
+                          final innerBoardSize =
+                              boardWidth - BoardGeometry.contentInset * 2;
+                          if (_boardGeometry == null ||
+                              _boardGeometry!.size != innerBoardSize) {
+                            _boardGeometry = BoardGeometry.fromSize(
+                              innerBoardSize,
                             );
-                          },
-                        ),
-                        if (state.status == GameStatus.continuePrompt ||
-                            state.status == GameStatus.adLoading ||
-                            state.status == GameStatus.reviving)
-                          ContinueOverlay(state: state),
-                        if (state.status == GameStatus.results)
-                          ResultsOverlay(state: state, onExit: widget.onExit),
-                        if (state.status == GameStatus.modeSuccess ||
-                            state.status == GameStatus.modeFailure)
-                          ModeResultOverlay(
-                            state: state,
-                            onExit: widget.onExit,
-                          ),
-                      ],
-                    );
-                  },
+                          }
+                          final boardGeometry = _boardGeometry!;
+                          return Stack(
+                            key: _stackKey,
+                            children: [
+                              Align(
+                                alignment: Alignment.topCenter,
+                                child: SizedBox(
+                                  width: contentWidth,
+                                  child: _GameContent(
+                                    state: state,
+                                    landscape: landscape,
+                                    scoreHeight: scoreHeight,
+                                    trayHeight: trayHeight,
+                                    boardKey: _boardKey,
+                                    boardSize: boardWidth,
+                                    geometry: boardGeometry,
+                                    debugCoordinates: _debugCoordinates,
+                                    onBack: () => unawaited(_handleBack()),
+                                    onSettings: _showSettings,
+                                    onDragStart: _startDrag,
+                                    onDragUpdate: _updateDrag,
+                                    onDragEnd: _endDrag,
+                                    dragVisual: _dragVisual,
+                                    boardRepaint: _boardRepaint,
+                                    clearController: _clearController,
+                                    floatController: _floatController,
+                                    messageController: _messageController,
+                                    clearParticles: _clearParticles,
+                                  ),
+                                ),
+                              ),
+                              ValueListenableBuilder<DragVisual?>(
+                                valueListenable: _dragVisual,
+                                builder: (context, drag, child) {
+                                  if (drag == null) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return AnimatedBuilder(
+                                    animation: _pickupController,
+                                    builder: (context, child) => _DraggedPiece(
+                                      piece: drag.piece,
+                                      position: drag.position,
+                                      cellSize: boardGeometry.cellSize,
+                                      scale:
+                                          1 +
+                                          Curves.easeOut.transform(
+                                                _pickupController.value,
+                                              ) *
+                                              .06,
+                                    ),
+                                  );
+                                },
+                              ),
+                              if (state.status == GameStatus.continuePrompt ||
+                                  state.status == GameStatus.adLoading ||
+                                  state.status == GameStatus.reviving)
+                                ContinueOverlay(state: state),
+                              if (state.status == GameStatus.results)
+                                ResultsOverlay(
+                                  state: state,
+                                  onExit: widget.onExit,
+                                ),
+                              if (state.status == GameStatus.modeSuccess ||
+                                  state.status == GameStatus.modeFailure)
+                                ModeResultOverlay(
+                                  state: state,
+                                  onExit: widget.onExit,
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    if (state.status == GameStatus.playing ||
+                        state.status == GameStatus.clearing)
+                      AdsBannerSlot(
+                        ads: context.read<GameCubit>().ads,
+                        placement: AdPlacement.gameplay,
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -400,6 +454,9 @@ class DragVisual {
 class _GameContent extends StatelessWidget {
   const _GameContent({
     required this.state,
+    required this.landscape,
+    required this.scoreHeight,
+    required this.trayHeight,
     required this.boardKey,
     required this.boardSize,
     required this.geometry,
@@ -414,11 +471,13 @@ class _GameContent extends StatelessWidget {
     required this.clearController,
     required this.floatController,
     required this.messageController,
-    required this.heartController,
     required this.clearParticles,
   });
 
   final GameState state;
+  final bool landscape;
+  final double scoreHeight;
+  final double trayHeight;
   final GlobalKey boardKey;
   final double boardSize;
   final BoardGeometry geometry;
@@ -433,251 +492,246 @@ class _GameContent extends StatelessWidget {
   final AnimationController clearController;
   final AnimationController floatController;
   final AnimationController messageController;
-  final AnimationController heartController;
   final List<ClearParticle> clearParticles;
 
   @override
   Widget build(BuildContext context) {
     final board = state.board;
     final turn = state.turn;
-    return SingleChildScrollView(
-      physics: const ClampingScrollPhysics(),
-      child: Column(
+    final header = RepaintBoundary(
+      child: _Header(
+        state: state,
+        best: state.best,
+        onBack: onBack,
+        onSettings: onSettings,
+        onDebugGameOver: kDebugMode
+            ? () => context.read<GameCubit>().debugForceGameOver()
+            : null,
+      ),
+    );
+    final score = _ScoreDisplay(
+      score: state.score,
+      combo: state.combo,
+      points: turn?.points ?? 0,
+      controller: floatController,
+    );
+    final boardView = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 17),
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
           RepaintBoundary(
-            child: _Header(
-              state: state,
-              best: state.best,
-              onBack: onBack,
-              onSettings: onSettings,
-              onDebugGameOver: kDebugMode
-                  ? () => context.read<GameCubit>().debugForceGameOver()
-                  : null,
-            ),
-          ),
-          SizedBox(
-            height: 94,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (state.status == GameStatus.playing ||
-                    state.status == GameStatus.clearing)
-                  AnimatedBuilder(
-                    animation: heartController,
-                    builder: (context, child) => Opacity(
-                      opacity: (heartController.value * 1.4).clamp(0, 1),
-                      child: Transform.scale(
-                        scale: .74 + heartController.value * .32,
-                        child: const Text(
-                          '',
-                          style: TextStyle(
-                            color: PrismColors.pink,
-                            fontSize: 88,
-                            shadows: [
-                              Shadow(color: PrismColors.pink, blurRadius: 24),
-                            ],
-                          ),
+            key: const ValueKey('game-board'),
+            child: Container(
+              key: boardKey,
+              width: boardSize,
+              height: boardSize,
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: PrismColors.midnight.withValues(alpha: .74),
+                borderRadius: BorderRadius.circular(23),
+                border: Border.all(
+                  color: PrismColors.cyan.withValues(alpha: .15),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xff06091f).withValues(alpha: .66),
+                    blurRadius: 28,
+                    offset: const Offset(0, 15),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    RepaintBoundary(
+                      child: CustomPaint(
+                        painter: BoardStaticPainter(
+                          board: board,
+                          geometry: geometry,
+                          showCoordinates: debugCoordinates,
+                          clearingCells: state.status == GameStatus.clearing
+                              ? turn?.clearCells ?? const {}
+                              : const {},
+                        ),
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                    RepaintBoundary(
+                      child: AnimatedBuilder(
+                        animation: boardRepaint,
+                        builder: (context, child) {
+                          final drag = dragVisual.value;
+                          return CustomPaint(
+                            painter: BoardEffectsPainter(
+                              geometry: geometry,
+                              board: board,
+                              reducedMotion: MediaQuery.disableAnimationsOf(
+                                context,
+                              ),
+                              previewPiece: drag?.piece,
+                              previewOrigin: drag?.origin,
+                              previewValid: drag?.valid ?? false,
+                              turn:
+                                  turn == null ||
+                                      state.status != GameStatus.clearing
+                                  ? null
+                                  : TurnDrawData(
+                                      clearCells: turn.clearCells,
+                                      rows: _lineRows(turn.clearCells),
+                                      columns: _lineColumns(turn.clearCells),
+                                    ),
+                              clearProgress: clearController.value,
+                              particles: clearParticles,
+                            ),
+                            child: const SizedBox.expand(),
+                          );
+                        },
+                      ),
+                    ),
+                    if (turn != null && turn.lines > 0 && state.combo >= 2)
+                      Positioned.fill(
+                        child: ComboOverlay(
+                          key: ValueKey('combo-${turn.id}'),
+                          combo: state.combo,
+                          eventId: turn.id,
                         ),
                       ),
-                    ),
-                  ),
-                RepaintBoundary(
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: state.score.toDouble()),
-                    duration: GameFeelConfig.scoreCounter,
-                    curve: Curves.easeOutCubic,
-                    builder: (context, value, child) => Text(
-                      value.round().toString(),
-                      semanticsLabel: 'Current score ${value.round()}',
-                      style: const TextStyle(
-                        fontSize: 43,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -1.4,
-                        color: PrismColors.ink,
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
-                Positioned(
-                  bottom: 3,
-                  child: Text(
-                    state.combo > 1 ? 'COMBO ${state.combo}' : 'SCORE',
-                    style: TextStyle(
-                      color: state.combo > 1
-                          ? PrismColors.yellow
-                          : PrismColors.muted,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-          if (state.session.mode != GameMode.classic)
-            _ModeProgressStrip(state: state),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 17),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                RepaintBoundary(
-                  key: const ValueKey('game-board'),
-                  child: Container(
-                    key: boardKey,
-                    width: boardSize,
-                    height: boardSize,
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: PrismColors.midnight.withValues(alpha: .74),
-                      borderRadius: BorderRadius.circular(23),
-                      border: Border.all(
-                        color: PrismColors.cyan.withValues(alpha: .15),
-                        width: 1.2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xff06091f).withValues(alpha: .66),
-                          blurRadius: 28,
-                          offset: const Offset(0, 15),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          RepaintBoundary(
-                            child: CustomPaint(
-                              painter: BoardStaticPainter(
-                                board: board,
-                                geometry: geometry,
-                                showCoordinates: debugCoordinates,
-                              ),
-                              child: const SizedBox.expand(),
-                            ),
-                          ),
-                          RepaintBoundary(
-                            child: AnimatedBuilder(
-                              animation: boardRepaint,
-                              builder: (context, child) {
-                                final drag = dragVisual.value;
-                                return CustomPaint(
-                                  painter: BoardEffectsPainter(
-                                    geometry: geometry,
-                                    previewPiece: drag?.piece,
-                                    previewOrigin: drag?.origin,
-                                    previewValid: drag?.valid ?? false,
-                                    turn: turn == null
-                                        ? null
-                                        : TurnDrawData(
-                                            clearCells: turn.clearCells,
-                                            rows: _lineRows(turn.clearCells),
-                                            columns: _lineColumns(
-                                              turn.clearCells,
-                                            ),
-                                          ),
-                                    clearProgress: clearController.value,
-                                    particles: clearParticles,
-                                  ),
-                                  child: const SizedBox.expand(),
-                                );
-                              },
-                            ),
-                          ),
-                          if (turn != null &&
-                              turn.lines > 0 &&
-                              state.combo >= 2)
-                            Positioned.fill(
-                              child: ComboOverlay(
-                                key: ValueKey('combo-${turn.id}'),
-                                combo: state.combo,
-                                eventId: turn.id,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: -24,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: _PraiseMessage(
-                      controller: messageController,
-                      text: turn?.praise,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: -10,
-                  left: 0,
-                  right: 0,
-                  child: IgnorePointer(
-                    child: Center(
-                      child: _FloatingPoints(
-                        controller: floatController,
-                        points: turn?.points ?? 0,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+          Positioned(
+            top: 10,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: _PraiseMessage(
+                controller: messageController,
+                text: turn?.praise,
+              ),
             ),
           ),
-          const SizedBox(height: 22),
-          Text(
+          Positioned(
+            top: boardSize * .38,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Center(
+                child: _FloatingPoints(
+                  controller: floatController,
+                  points: turn?.points ?? 0,
+                  lines: turn?.lines ?? 0,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    final tray = SizedBox(
+      height: trayHeight,
+      child: RepaintBoundary(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Row(
+            children: [
+              for (var index = 0; index < state.pieces.length; index++)
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: index == 1 ? 6 : 0,
+                    ),
+                    child: _PieceSlot(
+                      piece: state.pieces[index],
+                      index: index,
+                      disabled: state.isInputLocked,
+                      onDragStart: onDragStart,
+                      onDragUpdate: onDragUpdate,
+                      onDragEnd: onDragEnd,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    final hint = SizedBox(
+      height: 32,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
             'DRAG A SHAPE TO PLAY',
             style: TextStyle(
-              color: PrismColors.ink.withValues(alpha: .60),
+              color: PrismColors.ink.withValues(alpha: .65),
               fontSize: 10,
               fontWeight: FontWeight.w800,
-              letterSpacing: 2.2,
+              letterSpacing: 2,
             ),
           ),
-          const SizedBox(height: 10),
-          RepaintBoundary(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: Row(
+        ),
+      ),
+    );
+    final footer = SizedBox(
+      height: 34,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'Place all three to reveal new shapes',
+            style: TextStyle(
+              color: PrismColors.muted.withValues(alpha: .8),
+              fontSize: 11,
+            ),
+          ),
+        ),
+      ),
+    );
+    if (landscape) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          boardView,
+          Flexible(
+            child: SizedBox(
+              width: 380,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  for (var index = 0; index < state.pieces.length; index++)
-                    Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          left: index == 0 ? 0 : 5,
-                          right: index == state.pieces.length - 1 ? 0 : 5,
-                        ),
-                        child: _PieceSlot(
-                          piece: state.pieces[index],
-                          index: index,
-                          disabled: state.isInputLocked,
-                          onDragStart: onDragStart,
-                          onDragUpdate: onDragUpdate,
-                          onDragEnd: onDragEnd,
-                        ),
-                      ),
-                    ),
+                  header,
+                  SizedBox(height: scoreHeight, child: score),
+                  hint,
+                  tray,
+                  if (trayHeight >= 80) footer,
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 13),
-          Text(
-            'Place all three to reveal new shapes',
-            style: TextStyle(
-              color: PrismColors.ink.withValues(alpha: .42),
-              fontSize: 11,
-            ),
-          ),
-          if (state.adsConfig.showsBannerAt(AdPlacement.gameplay))
-            const SizedBox(height: 62),
         ],
-      ),
+      );
+    }
+    return Column(
+      children: [
+        header,
+        SizedBox(height: scoreHeight, child: score),
+        const Spacer(),
+        if (state.session.mode != GameMode.classic)
+          _ModeProgressStrip(state: state),
+        boardView,
+        const Spacer(),
+        hint,
+        tray,
+        footer,
+        const SizedBox(height: 8),
+      ],
     );
   }
 
@@ -790,9 +844,9 @@ class _GameBackButtonState extends State<_GameBackButton> {
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,
-    label: 'Back to mode selection',
+    label: 'Back to home',
     child: Tooltip(
-      message: 'Back to mode selection',
+      message: 'Back to home',
       child: AnimatedScale(
         scale: _pressed ? .9 : 1,
         duration: const Duration(milliseconds: 90),
@@ -947,9 +1001,13 @@ class _PieceSlot extends StatelessWidget {
         onPanEnd: disabled || piece == null ? null : (_) => onDragEnd(),
         onPanCancel: disabled || piece == null ? null : onDragEnd,
         child: Container(
-          height: 108,
+          height: double.infinity,
           decoration: BoxDecoration(
-            color: PrismColors.navy.withValues(alpha: .74),
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xff293568), Color(0xff19244e)],
+            ),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: Colors.white.withValues(alpha: .09)),
           ),
@@ -969,11 +1027,24 @@ class _PieceSlot extends StatelessWidget {
                     final cell = piece!.size == 1
                         ? math.min(fittedCell, _singleCellPreviewMaxSize)
                         : fittedCell;
-                    return SizedBox(
-                      width: piece!.width * cell,
-                      height: piece!.height * cell,
-                      child: CustomPaint(
-                        painter: PiecePainter(piece: piece!, cellSize: cell),
+                    return TweenAnimationBuilder<double>(
+                      key: ValueKey(piece),
+                      tween: Tween(
+                        begin: MediaQuery.disableAnimationsOf(context)
+                            ? 1.0
+                            : .78,
+                        end: 1,
+                      ),
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeOutBack,
+                      builder: (context, value, child) =>
+                          Transform.scale(scale: value, child: child),
+                      child: SizedBox(
+                        width: piece!.width * cell,
+                        height: piece!.height * cell,
+                        child: CustomPaint(
+                          painter: PiecePainter(piece: piece!, cellSize: cell),
+                        ),
                       ),
                     );
                   },
@@ -1019,34 +1090,202 @@ class _DraggedPiece extends StatelessWidget {
   );
 }
 
+class _ScoreDisplay extends StatelessWidget {
+  const _ScoreDisplay({
+    required this.score,
+    required this.combo,
+    required this.points,
+    required this.controller,
+  });
+
+  final int score;
+  final int combo;
+  final int points;
+  final AnimationController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    return Semantics(
+      label: 'Current score $score',
+      excludeSemantics: true,
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) {
+          final t = controller.value;
+          final pulse = reducedMotion || points == 0
+              ? 0.0
+              : math.sin(t * math.pi) * math.exp(-t * 2);
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              if (!reducedMotion && points >= 100)
+                IgnorePointer(
+                  child: CustomPaint(
+                    size: const Size(180, 80),
+                    painter: _ScoreSparkPainter(progress: t),
+                  ),
+                ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Transform.scale(
+                      scale: 1 + pulse * (points >= 100 ? .32 : .12),
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: score.toDouble()),
+                        duration: reducedMotion
+                            ? Duration.zero
+                            : GameFeelConfig.scoreCounter,
+                        curve: Curves.easeOutCubic,
+                        builder: (context, value, child) => FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            value.round().toString(),
+                            style: TextStyle(
+                              fontSize: 46,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -1.8,
+                              color: Color.lerp(
+                                PrismColors.ink,
+                                PrismColors.yellow,
+                                pulse,
+                              ),
+                              shadows: [
+                                Shadow(
+                                  color: PrismColors.violet.withValues(
+                                    alpha: .25 + pulse,
+                                  ),
+                                  blurRadius: 22,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    combo > 1 ? 'COMBO ×$combo' : 'SCORE',
+                    style: TextStyle(
+                      color: combo > 1 ? PrismColors.yellow : PrismColors.muted,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ScoreSparkPainter extends CustomPainter {
+  const _ScoreSparkPainter({required this.progress});
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress == 0 || progress == 1) return;
+    final t = Curves.easeOutCubic.transform(progress);
+    final paint = Paint()
+      ..color = PrismColors.yellow.withValues(alpha: (1 - progress) * .85)
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    final center = size.center(Offset.zero);
+    for (var i = 0; i < 8; i++) {
+      final angle = i * math.pi / 4;
+      final direction = Offset(math.cos(angle), math.sin(angle) * .55);
+      final start = center + direction * (38 + t * 36);
+      canvas.drawLine(start, start + direction * (7 * (1 - progress)), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScoreSparkPainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
 class _FloatingPoints extends StatelessWidget {
-  const _FloatingPoints({required this.controller, required this.points});
+  const _FloatingPoints({
+    required this.controller,
+    required this.points,
+    required this.lines,
+  });
 
   final AnimationController controller;
   final int points;
+  final int lines;
 
   @override
   Widget build(BuildContext context) {
     if (points <= 0) return const SizedBox.shrink();
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
     return AnimatedBuilder(
       animation: controller,
       builder: (context, child) {
-        final t = Curves.easeOutCubic.transform(controller.value);
+        final t = controller.value;
+        if (t == 0 || t == 1) return const SizedBox.shrink();
+        final entry = Curves.easeOutBack.transform((t / .25).clamp(0, 1));
+        final fade = ((1 - t) / .32).clamp(0.0, 1.0);
         return Opacity(
-          opacity: (1 - t * 1.1).clamp(0, 1),
+          opacity: fade,
           child: Transform.translate(
-            offset: Offset(0, -t * 32),
-            child: Transform.scale(scale: .85 + t * .25, child: child),
+            offset: reducedMotion
+                ? Offset.zero
+                : Offset(0, -Curves.easeOutCubic.transform(t) * 50),
+            child: Transform.scale(
+              scale: reducedMotion ? 1 : .7 + entry * .3,
+              child: child,
+            ),
           ),
         );
       },
-      child: Text(
-        '+$points',
-        style: const TextStyle(
-          color: PrismColors.yellow,
-          fontSize: 18,
-          fontWeight: FontWeight.w900,
-          shadows: [Shadow(color: PrismColors.orange, blurRadius: 10)],
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: lines > 0 ? 18 : 12,
+          vertical: 8,
+        ),
+        decoration: BoxDecoration(
+          color: const Color(0xff17234d).withValues(alpha: .94),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: (lines > 0 ? PrismColors.yellow : PrismColors.cyan)
+                .withValues(alpha: .6),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: .2),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (lines > 0) ...[
+              Icon(
+                Icons.auto_awesome_rounded,
+                color: PrismColors.yellow,
+                size: lines > 1 ? 24 : 18,
+              ),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              '+$points',
+              style: TextStyle(
+                color: lines > 0 ? PrismColors.yellow : PrismColors.ink,
+                fontSize: lines > 1 ? 30 : 22,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1065,6 +1304,9 @@ class _PraiseMessage extends StatelessWidget {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, child) {
+        if (controller.value == 0 || controller.value == 1) {
+          return const SizedBox.shrink();
+        }
         final entry = Curves.elasticOut.transform(
           (controller.value * 2).clamp(0, 1),
         );
@@ -1073,7 +1315,12 @@ class _PraiseMessage extends StatelessWidget {
             : ((1 - controller.value) / .24).clamp(0, 1);
         return Opacity(
           opacity: opacity.toDouble(),
-          child: Transform.scale(scale: .65 + entry * .4, child: child),
+          child: Transform.scale(
+            scale: MediaQuery.disableAnimationsOf(context)
+                ? 1
+                : .65 + entry * .4,
+            child: child,
+          ),
         );
       },
       child: Text(

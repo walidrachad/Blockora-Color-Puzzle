@@ -50,7 +50,7 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(382, 848));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(app());
-      expect(find.byTooltip('Back to mode selection'), findsOneWidget);
+      expect(find.byTooltip('Back to home'), findsOneWidget);
       expect(find.text('DRAG A SHAPE TO PLAY'), findsOneWidget);
       expect(find.byType(CustomPaint), findsWidgets);
       expect(find.byType(AdsBannerSlot), findsOneWidget);
@@ -94,7 +94,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byTooltip('Back to mode selection'));
+    await tester.tap(find.byTooltip('Back to home'));
     await tester.pumpAndSettle();
     expect(find.text('Leave this run?'), findsOneWidget);
     await tester.tap(find.widgetWithText(FilledButton, 'Leave'));
@@ -229,7 +229,7 @@ void main() {
     await tester.pump();
     expect(find.byType(AdsBannerSlot), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Back to mode selection'));
+    await tester.tap(find.byTooltip('Back to home'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Leave'));
     await tester.runAsync(() => Future<void>.delayed(Duration.zero));

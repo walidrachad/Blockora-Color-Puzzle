@@ -33,9 +33,7 @@ void main() {
 
   tearDown(() async => cubit.close());
 
-  testWidgets('mode selection exposes Classic, Journey, and Daily Challenge', (
-    tester,
-  ) async {
+  testWidgets('mode selection exposes only Classic', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: prismTheme(),
@@ -43,38 +41,7 @@ void main() {
       ),
     );
     expect(find.text('Classic'), findsOneWidget);
-    expect(find.text('Journey'), findsOneWidget);
-    expect(find.text('Daily Challenge'), findsOneWidget);
-  });
-
-  testWidgets('Journey opens a 30-level selection screen', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: prismTheme(),
-        home: ModeSelectionScreen(cubit: cubit),
-      ),
-    );
-    await tester.tap(find.text('Journey'));
-    await tester.pumpAndSettle();
-    expect(find.text('Journey'), findsOneWidget); // AppBar title.
-    expect(find.text('1'), findsOneWidget);
-    expect(find.text('2'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Back to mode selection'));
-    await tester.pumpAndSettle();
-    expect(find.text('Choose your mode'), findsOneWidget);
-  });
-
-  testWidgets('Daily opens its offline overview', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: prismTheme(),
-        home: ModeSelectionScreen(cubit: cubit),
-      ),
-    );
-    await tester.tap(find.text('Daily Challenge'));
-    await tester.pumpAndSettle();
-    expect(find.text('RECENT DAYS'), findsOneWidget);
-    expect(find.text('START TODAY'), findsOneWidget);
+    expect(find.text('Journey'), findsNothing);
+    expect(find.text('Daily Challenge'), findsNothing);
   });
 }

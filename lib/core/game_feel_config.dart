@@ -11,9 +11,9 @@ class GameFeelConfig {
   static const validSnap = Duration(milliseconds: 80);
   static const invalidReturn = Duration(milliseconds: 140);
   static const placementBounce = Duration(milliseconds: 105);
-  static const clearTotal = Duration(milliseconds: 450);
+  static const clearTotal = Duration(milliseconds: 580);
   static const particleImpact = Duration(milliseconds: 390);
-  static const floatingScore = Duration(milliseconds: 620);
+  static const floatingScore = Duration(milliseconds: 850);
   static const praise = Duration(milliseconds: 760);
   static const combo = Duration(milliseconds: 130);
   static const heartPulse = Duration(milliseconds: 360);

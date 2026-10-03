@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme.dart';
 import '../../domain/models.dart';
+import 'block_skin.dart';
 
 class TurnDrawData {
   const TurnDrawData({
@@ -66,7 +67,8 @@ List<ClearParticle> buildClearParticles({
 }
 
 class PiecePainter extends CustomPainter {
-  PiecePainter({required this.piece, required this.cellSize, this.opacity = 1});
+  PiecePainter({required this.piece, required this.cellSize, this.opacity = 1})
+    : super(repaint: BlockSkin.instance);
 
   final Piece piece;
   final double cellSize;
@@ -74,37 +76,17 @@ class PiecePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final color =
-        PrismColors.blockColors[piece.color % PrismColors.blockColors.length];
-    final paint = Paint();
-    final gradient = LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [
-        color.withValues(alpha: opacity),
-        color.withValues(alpha: opacity * .68),
-      ],
-    );
-    final shine = Paint()
-      ..color = Colors.white.withValues(alpha: .25 * opacity)
-      ..strokeWidth = 1.4
-      ..strokeCap = StrokeCap.round;
     for (final cell in piece.cells) {
-      final rect = Rect.fromLTWH(
-        cell.col * cellSize + 2,
-        cell.row * cellSize + 2,
-        cellSize - 4,
-        cellSize - 4,
-      );
-      paint.shader = gradient.createShader(rect);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, Radius.circular(cellSize * .17)),
-        paint,
-      );
-      canvas.drawLine(
-        rect.topLeft + Offset(cellSize * .12, cellSize * .13),
-        rect.topRight + Offset(-cellSize * .12, cellSize * .13),
-        shine,
+      BlockSkin.instance.paint(
+        canvas,
+        Rect.fromLTWH(
+          cell.col * cellSize + 1.5,
+          cell.row * cellSize + 1.5,
+          cellSize - 3,
+          cellSize - 3,
+        ),
+        piece.color,
+        opacity: opacity,
       );
     }
   }

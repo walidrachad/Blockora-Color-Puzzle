@@ -5,21 +5,12 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme.dart';
 import '../../domain/models.dart';
 import 'game_painters.dart';
+import 'block_skin.dart';
 
 const _emptyCellGradient = LinearGradient(
   begin: Alignment.topLeft,
   end: Alignment.bottomRight,
   colors: [Color(0xff182459), Color(0xff111a45)],
-);
-const _clearCellGradient = LinearGradient(
-  colors: PrismColors.rainbow,
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-);
-const _sweepGradient = LinearGradient(
-  colors: [Color(0x00ffffff), Color(0xa6ffffff), Color(0x00ffffff)],
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
 );
 
 /// Layout-dependent board geometry shared by all board layers and hit testing.
@@ -190,8 +181,10 @@ class BoardStaticPainter extends CustomPainter {
     required this.board,
     required this.geometry,
     this.showCoordinates = false,
-  });
+    this.clearingCells = const {},
+  }) : super(repaint: BlockSkin.instance);
 
+  final Set<GridPoint> clearingCells;
   final Board board;
   final BoardGeometry geometry;
   final bool showCoordinates;
@@ -202,71 +195,56 @@ class BoardStaticPainter extends CustomPainter {
       geometry: geometry,
       showCoordinates: showCoordinates,
     ).paint(canvas, size);
-    BoardBlocksPainter(board: board, geometry: geometry).paint(canvas, size);
+    BoardBlocksPainter(
+      board: board,
+      geometry: geometry,
+      hiddenCells: clearingCells,
+    ).paint(canvas, size);
   }
 
   @override
   bool shouldRepaint(covariant BoardStaticPainter oldDelegate) =>
       oldDelegate.board != board ||
+      oldDelegate.clearingCells != clearingCells ||
       oldDelegate.geometry != geometry ||
       oldDelegate.showCoordinates != showCoordinates;
 }
 
 class BoardBlocksPainter extends CustomPainter {
-  BoardBlocksPainter({required this.board, required this.geometry});
+  BoardBlocksPainter({
+    required this.board,
+    required this.geometry,
+    this.hiddenCells = const {},
+  }) : super(repaint: BlockSkin.instance);
 
   final Board board;
   final BoardGeometry geometry;
+  final Set<GridPoint> hiddenCells;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint();
-    final highlight = Paint()
-      ..color = Colors.white.withValues(alpha: .25)
-      ..strokeWidth = math.max(1.5, geometry.cellSize * .035)
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-    final bottom = Paint();
-
     for (var row = 0; row < Board.size; row++) {
       for (var col = 0; col < Board.size; col++) {
         final value = board.cells[row][col];
-        if (value == null) continue;
         final point = GridPoint(row, col);
-        final rect = geometry.cellRect(point);
-        final color =
-            PrismColors.blockColors[value % PrismColors.blockColors.length];
-        paint.shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [color.withValues(alpha: .98), color.withValues(alpha: .72)],
-        ).createShader(rect);
-        canvas.drawRRect(geometry.blockRect(point), paint);
-        canvas.drawLine(
-          Offset(
-            rect.left + geometry.cellSize * .16,
-            rect.top + geometry.cellSize * .16,
-          ),
-          Offset(
-            rect.right - geometry.cellSize * .18,
-            rect.top + geometry.cellSize * .16,
-          ),
-          highlight,
-        );
-        bottom.color = color.withValues(alpha: .34);
-        canvas.drawRRect(geometry.bottomRect(point), bottom);
+        if (value == null || hiddenCells.contains(point)) continue;
+        BlockSkin.instance.paint(canvas, geometry.cellRect(point), value);
       }
     }
   }
 
   @override
   bool shouldRepaint(covariant BoardBlocksPainter oldDelegate) =>
-      oldDelegate.board != board || oldDelegate.geometry != geometry;
+      oldDelegate.board != board ||
+      oldDelegate.geometry != geometry ||
+      oldDelegate.hiddenCells != hiddenCells;
 }
 
 class BoardEffectsPainter extends CustomPainter {
   BoardEffectsPainter({
     required this.geometry,
+    this.board,
+    this.reducedMotion = false,
     this.previewPiece,
     this.previewOrigin,
     this.previewValid = false,
@@ -276,6 +254,8 @@ class BoardEffectsPainter extends CustomPainter {
   });
 
   final BoardGeometry geometry;
+  final Board? board;
+  final bool reducedMotion;
   final Piece? previewPiece;
   final GridPoint? previewOrigin;
   final bool previewValid;
@@ -305,7 +285,7 @@ class BoardEffectsPainter extends CustomPainter {
       _paintPreview(canvas, previewPiece!, previewOrigin!, previewValid);
     }
 
-    if (turn != null && clearProgress > 0) {
+    if (turn != null && clearProgress > 0 && !reducedMotion) {
       _paintSweep(canvas, turn!, clearProgress);
       _paintParticles(canvas, clearProgress);
     }
@@ -320,79 +300,102 @@ class BoardEffectsPainter extends CustomPainter {
     Paint shine,
   ) {
     final cell = geometry.cellSize;
-    final wave =
-        ((progress * 1.35 - ((point.row + point.col) % 7) * .035).clamp(
-          0,
-          1,
-        )).toDouble();
-    final fade = (1 - ((wave - .60) / .40).clamp(0, 1)).toDouble();
-    final color = PrismColors
-        .rainbow[(point.row * 3 + point.col * 2) % PrismColors.rainbow.length];
-    glow.color = color.withValues(alpha: .33 * fade);
-    canvas.drawRRect(geometry.clearGlowRect(point), glow);
-    fill
-      ..shader = _clearCellGradient.createShader(geometry.cellRect(point))
-      ..color = color.withValues(alpha: fade);
-    canvas.drawRRect(geometry.clearFillRect(point), fill);
-    if (wave > .45) {
-      shine.color = Colors.white.withValues(alpha: .72 * fade);
-      canvas.drawCircle(
-        geometry.cellRect(point).center,
-        cell * .10 * math.min(1, (wave - .45) * 2.2),
-        shine,
-      );
+    final rect = geometry.cellRect(point);
+    final delay = reducedMotion ? 0.0 : (point.row + point.col) * .012;
+    final t = ((progress - delay) / (1 - delay)).clamp(0.0, 1.0);
+    final burst = ((t - .24) / .55).clamp(0.0, 1.0);
+    final fade = 1 - Curves.easeIn.transform(burst);
+    final colorIndex = board?[point] ?? (point.row + point.col) % 7;
+    final color = PrismColors.blockColors[colorIndex % 7];
+    final pulse = math.sin((t / .4).clamp(0.0, 1.0) * math.pi);
+    final scale = reducedMotion ? 1.0 : (1 + pulse * .16) * (1 - burst * .94);
+    canvas.save();
+    canvas.translate(rect.center.dx, rect.center.dy);
+    canvas.scale(scale);
+    final local = Rect.fromCenter(
+      center: Offset.zero,
+      width: rect.width,
+      height: rect.height,
+    );
+    BlockSkin.instance.paint(canvas, local, colorIndex, opacity: fade);
+    shine.color = Colors.white.withValues(alpha: pulse * .7 * fade);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(local, Radius.circular(cell * .23)),
+      shine,
+    );
+    canvas.restore();
+    if (!reducedMotion && burst > 0 && burst < 1) {
+      glow
+        ..color = color.withValues(alpha: (1 - burst) * .65)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = cell * .045
+        ..maskFilter = null;
+      canvas.drawCircle(rect.center, cell * (.3 + burst * .38), glow);
     }
   }
 
   void _paintSweep(Canvas canvas, TurnDrawData data, double progress) {
     final cell = geometry.cellSize;
+    final t = (progress / .65).clamp(0.0, 1.0);
+    final fade = math.sin(t * math.pi);
     final paint = Paint()
-      ..shader = _sweepGradient.createShader(
-        Rect.fromLTWH(0, 0, geometry.size, geometry.size),
-      )
-      ..blendMode = BlendMode.screen;
-    final offset = progress * geometry.size * 1.3 - geometry.size * .25;
+      ..color = Colors.white.withValues(alpha: fade * .85)
+      ..strokeWidth = cell * .075
+      ..strokeCap = StrokeCap.round;
+    final glow = Paint()
+      ..color = PrismColors.cyan.withValues(alpha: fade * .35)
+      ..strokeWidth = cell * .35
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, cell * .15);
     for (final row in data.rows) {
-      canvas.drawRect(
-        Rect.fromLTWH(offset, row * cell, cell * .55, cell),
-        paint,
-      );
+      final y = (row + .5) * cell;
+      final from = Offset(geometry.size * math.max(0, t - .35), y);
+      final to = Offset(geometry.size * math.min(1, t + .15), y);
+      canvas.drawLine(from, to, glow);
+      canvas.drawLine(from, to, paint);
     }
     for (final col in data.columns) {
-      canvas.drawRect(
-        Rect.fromLTWH(col * cell, offset, cell, cell * .55),
-        paint,
-      );
+      final x = (col + .5) * cell;
+      final from = Offset(x, geometry.size * math.max(0, t - .35));
+      final to = Offset(x, geometry.size * math.min(1, t + .15));
+      canvas.drawLine(from, to, glow);
+      canvas.drawLine(from, to, paint);
     }
   }
 
   void _paintParticles(Canvas canvas, double progress) {
+    if (progress <= .23) return;
     final cell = geometry.cellSize;
+    final t = ((progress - .23) / .77).clamp(0.0, 1.0);
+    final travel = Curves.easeOutCubic.transform(t);
     final paint = Paint();
-    final t = ((progress - .14) / .86).clamp(0, 1).toDouble();
-    final opacity = (1 - t).clamp(0, 1).toDouble();
     for (final particle in particles) {
       final position = Offset(
-        particle.x * cell + particle.vx * cell * t,
-        particle.y * cell + particle.vy * cell * t + cell * .78 * t * t,
+        particle.x * cell + particle.vx * cell * travel * 1.5,
+        particle.y * cell +
+            particle.vy * cell * travel * 1.5 +
+            cell * .8 * t * t,
       );
-      paint.color = particle.color.withValues(alpha: opacity * .88);
-      final particleSize = particle.size * cell * (1 - t * .35);
+      paint.color = particle.color.withValues(alpha: (1 - t) * .95);
+      final radius = particle.size * cell * (1 - t * .65);
+      canvas.save();
+      canvas.translate(position.dx, position.dy);
+      canvas.rotate(t * math.pi * (particle.square ? 1 : -1));
       if (particle.square) {
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromCenter(
-              center: position,
-              width: particleSize,
-              height: particleSize,
-            ),
-            Radius.circular(particleSize * .22),
-          ),
-          paint,
-        );
+        final star = Path();
+        for (var i = 0; i < 8; i++) {
+          final a = i * math.pi / 4;
+          final r = i.isEven ? radius : radius * .3;
+          if (i == 0) {
+            star.moveTo(math.cos(a) * r, math.sin(a) * r);
+          } else {
+            star.lineTo(math.cos(a) * r, math.sin(a) * r);
+          }
+        }
+        canvas.drawPath(star..close(), paint);
       } else {
-        canvas.drawCircle(position, particleSize * .5, paint);
+        canvas.drawCircle(Offset.zero, radius * .48, paint);
       }
+      canvas.restore();
     }
   }
 
@@ -437,6 +440,8 @@ class BoardEffectsPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant BoardEffectsPainter oldDelegate) =>
       oldDelegate.geometry != geometry ||
+      oldDelegate.board != board ||
+      oldDelegate.reducedMotion != reducedMotion ||
       oldDelegate.previewPiece != previewPiece ||
       oldDelegate.previewOrigin != previewOrigin ||
       oldDelegate.previewValid != previewValid ||

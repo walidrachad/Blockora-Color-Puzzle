@@ -62,7 +62,7 @@ class ModeSelectionScreen extends StatelessWidget {
                             const _BrandLockup(),
                             const SizedBox(height: 36),
                             const Text(
-                              'Choose your mode',
+                              'Classic mode',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 28,
@@ -71,12 +71,13 @@ class ModeSelectionScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             const Text(
-                              'Every board is a new bright move.',
+                              'The endless original. Build your best score.',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: PrismColors.muted),
                             ),
                             const SizedBox(height: 26),
-                            if (state.hasSavedSession) ...[
+                            if (state.hasSavedSession &&
+                                state.session.mode == GameMode.classic) ...[
                               _ResumeCard(
                                 mode: state.session.mode,
                                 onTap: () => Navigator.push<void>(
@@ -106,49 +107,6 @@ class ModeSelectionScreen extends StatelessWidget {
                               detail: 'NO LIMIT · REVIVE AVAILABLE',
                               onTap: () =>
                                   _openGame(context, cubit.startClassic),
-                            ),
-                            const SizedBox(height: 13),
-                            _ModeCard(
-                              icon: Icons.map_rounded,
-                              color: PrismColors.yellow,
-                              gradient: const [
-                                Color(0xffffd45c),
-                                Color(0xffed7b2d),
-                              ],
-                              title: 'Journey',
-                              description:
-                                  'Thirty handcrafted goals with stars to earn.',
-                              detail:
-                                  '${cubit.state.progress.journey.unlockedLevel}/30 UNLOCKED',
-                              onTap: () => Navigator.push<void>(
-                                context,
-                                MaterialPageRoute<void>(
-                                  builder: (_) =>
-                                      JourneyLevelSelectionScreen(cubit: cubit),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 13),
-                            _ModeCard(
-                              icon: Icons.today_rounded,
-                              color: PrismColors.pink,
-                              gradient: const [
-                                Color(0xffff7cc8),
-                                Color(0xffa33fae),
-                              ],
-                              title: 'Daily Challenge',
-                              description:
-                                  'One deterministic offline challenge every UTC day.',
-                              detail:
-                                  '${cubit.state.progress.daily.currentStreakFor(utcDateKey(DateTime.now().toUtc()))} DAY STREAK',
-                              onTap: () => Navigator.push<void>(
-                                context,
-                                MaterialPageRoute<void>(
-                                  builder: (_) => DailyChallengeOverviewScreen(
-                                    cubit: cubit,
-                                  ),
-                                ),
-                              ),
                             ),
                           ],
                         ),

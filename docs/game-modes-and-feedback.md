@@ -2,17 +2,11 @@
 
 ## Player flow
 
-`Blockora` shows a short splash, then `ModeSelectionScreen`.
+`Blockora` shows a short splash, then `ModeSelectionScreen` with one option:
+**Classic**, the endless board with the existing continue/revive flow.
 
-- **Classic** starts the existing endless board. The existing continue/revive
-  flow remains available.
-- **Journey** opens 30 local levels. Each level contains an initial board,
-  seed, objective, move limit, allowed piece IDs, star thresholds, and reward.
-  Completion stores the best score/moves, stars, and next unlocked level.
-- **Daily Challenge** derives one challenge from the current UTC date and a
-  configuration version. The date key, objective, seed, initial board, and
-  move limit are persisted with an active run. Completion updates local best
-  score, completion history, and streak counters.
+Journey and Daily Challenge data remains readable for save compatibility, but
+those modes are no longer exposed by the product UI.
 
 The active run is stored as schema 2 `SavedGame` data. Mode progress has its
 own storage record, so showing a result can clear the resumable board without
@@ -52,17 +46,12 @@ effects while a rewarded ad is active.
 ## Manual smoke checklist
 
 1. Run `flutter run` on an Android or iOS device/simulator.
-2. Wait for the splash, then open each of Classic, Journey, and Daily.
-3. In Journey, confirm level 1 is unlocked, start it, and finish a level.
-   Return to confirm the next level unlock and stars update.
-4. Open Daily, note the date/objective, play once, and confirm completion and
-   streak data return on the overview.
-5. In Classic, make consecutive line clears. Confirm combo 2/3/4/5/6+ shows
+2. Wait for the splash, then open Classic.
+3. Make consecutive line clears. Confirm combo 2/3/4/5/6+ shows
    the appropriate centered feedback and then disappears.
-6. Use the debug-only Feedback tools in a debug build to force one, two, or
+4. Use the debug-only Feedback tools in a debug build to force one, two, or
    three-line clears. Confirm only one clear sound tier is played per drop.
-7. Background the app during a run, relaunch it, and use Resume. Confirm the
+5. Background the app during a run, relaunch it, and use Resume. Confirm the
    board, pieces, mode, score, and mode metrics restore.
-8. Drag shapes against all board edges. Confirm the ghost and final board use
+6. Drag shapes against all board edges. Confirm the ghost and final board use
    the exact current piece cells and no retired fifth cell.
-
