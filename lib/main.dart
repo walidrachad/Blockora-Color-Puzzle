@@ -15,7 +15,7 @@ import 'core/services/services.dart';
 import 'features/game/application/game_cubit.dart';
 import 'features/game/presentation/combo_overlay.dart';
 import 'features/game/presentation/game_screen.dart';
-import 'features/game/presentation/mode_screens.dart';
+import 'features/game/presentation/home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -92,7 +92,7 @@ class _SplashGateState extends State<_SplashGate>
 
   @override
   Widget build(BuildContext context) {
-    if (_ready) return ModeSelectionScreen(cubit: widget.gameCubit);
+    if (_ready) return BlockoraHomeScreen(cubit: widget.gameCubit);
     return Scaffold(
       body: DecoratedBox(
         decoration: const BoxDecoration(
