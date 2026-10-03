@@ -200,9 +200,9 @@ class _Logo extends StatelessWidget {
     alignment: Alignment.center,
     clipBehavior: Clip.none,
     children: [
-      const Transform.translate(
-        offset: Offset(0, 5),
-        child: Text(
+      Transform.translate(
+        offset: const Offset(0, 5),
+        child: const Text(
           'BLOCKORA',
           style: TextStyle(
             color: Color(0xff70422f),
