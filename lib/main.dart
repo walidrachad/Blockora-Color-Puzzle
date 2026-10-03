@@ -14,9 +14,9 @@ import 'core/frame_stats_probe.dart';
 import 'core/game_feel_config.dart';
 import 'core/services/services.dart';
 import 'features/game/application/game_cubit.dart';
+import 'features/game/presentation/cartoon_game_shell.dart';
+import 'features/game/presentation/cartoon_home_screen.dart';
 import 'features/game/presentation/combo_overlay.dart';
-import 'features/game/presentation/game_screen.dart';
-import 'features/game/presentation/home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -93,7 +93,7 @@ class _SplashGateState extends State<_SplashGate>
 
   @override
   Widget build(BuildContext context) {
-    if (_ready) return BlockoraHomeScreen(cubit: widget.gameCubit);
+    if (_ready) return CartoonHomeScreen(cubit: widget.gameCubit);
     return Scaffold(
       body: DecoratedBox(
         decoration: cartoonBackground(),
@@ -240,8 +240,8 @@ class GameScreenWithCubit extends StatelessWidget {
   final VoidCallback? onExit;
 
   @override
-  Widget build(BuildContext context) => BlocProvider.value(
-    value: cubit,
-    child: GameScreen(onExit: onExit),
+  Widget build(BuildContext context) => CartoonGameShell(
+    cubit: cubit,
+    onExit: onExit,
   );
 }
