@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -528,7 +529,7 @@ class _GameHud extends StatelessWidget {
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: CartoonColors.pink,
+                          color: CartoonColors.ribbon,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -556,7 +557,7 @@ class _GameHud extends StatelessWidget {
           icon: Icons.settings_rounded,
           onTap: onSettings,
           tooltip: 'Settings',
-          blue: true,
+          // blue: true,
         ),
       ],
     ),
