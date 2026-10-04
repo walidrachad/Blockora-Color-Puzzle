@@ -61,7 +61,14 @@ class CartoonHomeScreen extends StatelessWidget {
                               ),
                               child: Column(
                                 children: [
-                                  const _CornerMenu(),
+                                  _CornerMenu(
+                                    musicEnabled: state.preferences.music,
+                                    onToggleMusic: () => cubit.updatePreferences(
+                                      state.preferences.copyWith(
+                                        music: !state.preferences.music,
+                                      ),
+                                    ),
+                                  ),
                                   SizedBox(height: compact ? 10 : 16),
                                   const _Logo(),
                                   SizedBox(height: compact ? 8 : 14),
@@ -177,17 +184,33 @@ class CartoonHomeScreen extends StatelessWidget {
 }
 
 class _CornerMenu extends StatelessWidget {
-  const _CornerMenu();
+  const _CornerMenu({
+    required this.musicEnabled,
+    required this.onToggleMusic,
+  });
+
+  final bool musicEnabled;
+  final VoidCallback onToggleMusic;
 
   @override
   Widget build(BuildContext context) => Row(
     mainAxisAlignment: MainAxisAlignment.end,
     children: [
-      RoundGameButton(icon: Icons.home_rounded, onTap: () {}),
+      RoundGameButton(
+        icon: musicEnabled
+            ? Icons.music_note_rounded
+            : Icons.music_off_rounded,
+        onTap: onToggleMusic,
+        tooltip: musicEnabled ? 'Turn music off' : 'Turn music on',
+        showShadow: false,
+      ),
       const SizedBox(width: 9),
-      RoundGameButton(icon: Icons.music_note_rounded, onTap: () {}),
-      const SizedBox(width: 9),
-      RoundGameButton(icon: Icons.emoji_events_rounded, onTap: () {}),
+      RoundGameButton(
+        icon: Icons.emoji_events_rounded,
+        onTap: () {},
+        tooltip: 'Best score',
+        showShadow: false,
+      ),
     ],
   );
 }
