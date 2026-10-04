@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -247,7 +248,7 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
                 children: [
                   SizedBox(height: headerHeight, child: _Hud(state: state, onBack: _leave, onSettings: _showSettings)),
                   const SizedBox(height: headerGap),
-                  const _BoardTitle(text: 'MAKE SPACE'),
+                  // const _BoardTitle(text: 'MAKE SPACE'),
                   const SizedBox(height: titleGap),
                   _BoardSurface(
                     state: state,

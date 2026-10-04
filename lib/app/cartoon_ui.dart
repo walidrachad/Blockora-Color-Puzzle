@@ -150,8 +150,8 @@ class CartoonRibbon extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
                     letterSpacing: .6,
                     shadows: [
                       Shadow(

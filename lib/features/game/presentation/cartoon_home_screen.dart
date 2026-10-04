@@ -240,7 +240,7 @@ class CartoonHomeScreen extends StatelessWidget {
                                         ),
                                       ),
                                       const CartoonRibbon(
-                                        text: 'CLASSIC MODE',
+                                        text: 'PLAY NOW',
                                         icon: Icons.star_rounded,
                                         width: 280,
                                       ),
