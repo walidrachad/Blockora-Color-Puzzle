@@ -27,6 +27,105 @@ class CartoonHomeScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _showBestScore(BuildContext context, int best) async {
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: .42),
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.topCenter,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 34),
+              child: CartoonPanel(
+                padding: const EdgeInsets.fromLTRB(22, 50, 22, 22),
+                radius: 28,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 78,
+                      height: 78,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Color(0xffffe46a), CartoonColors.orange],
+                        ),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: .7),
+                          width: 3,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.emoji_events_rounded,
+                        color: Colors.white,
+                        size: 43,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: CartoonColors.paperWarm,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: const Color(0xffe5b77f),
+                          width: 2,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'YOUR BEST',
+                            style: TextStyle(
+                              color: CartoonColors.textSoft,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            '$best',
+                            style: const TextStyle(
+                              color: CartoonColors.text,
+                              fontSize: 40,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    GlossyGameButton(
+                      label: 'CLOSE',
+                      icon: Icons.check_rounded,
+                      onTap: () => Navigator.pop(dialogContext),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const CartoonRibbon(
+              text: 'BEST SCORE',
+              icon: Icons.star_rounded,
+              width: 250,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => BlocProvider.value(
     value: cubit,
@@ -68,6 +167,8 @@ class CartoonHomeScreen extends StatelessWidget {
                                         music: !state.preferences.music,
                                       ),
                                     ),
+                                    onShowBestScore: () =>
+                                        _showBestScore(context, best),
                                   ),
                                   SizedBox(height: compact ? 10 : 16),
                                   const _Logo(),
@@ -187,10 +288,12 @@ class _CornerMenu extends StatelessWidget {
   const _CornerMenu({
     required this.musicEnabled,
     required this.onToggleMusic,
+    required this.onShowBestScore,
   });
 
   final bool musicEnabled;
   final VoidCallback onToggleMusic;
+  final VoidCallback onShowBestScore;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -207,7 +310,7 @@ class _CornerMenu extends StatelessWidget {
       const SizedBox(width: 9),
       RoundGameButton(
         icon: Icons.emoji_events_rounded,
-        onTap: () {},
+        onTap: onShowBestScore,
         tooltip: 'Best score',
         showShadow: false,
       ),
