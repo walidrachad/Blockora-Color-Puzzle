@@ -32,30 +32,9 @@ class CartoonGameShell extends StatelessWidget {
             child: _CornerToy(color: Color(0xff9bd528), angle: .14),
           ),
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: CartoonColors.paper,
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(
-                    color: CartoonColors.outline,
-                    width: 5,
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x55000000),
-                      blurRadius: 10,
-                      offset: Offset(7, 9),
-                    ),
-                  ],
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: BlocProvider.value(
-                  value: cubit,
-                  child: CartoonGameplayScreenV3(onExit: onExit),
-                ),
-              ),
+            child: BlocProvider.value(
+              value: cubit,
+              child: CartoonGameplayScreenV3(onExit: onExit),
             ),
           ),
         ],
