@@ -16,12 +16,9 @@ import 'painters/game_painters.dart';
 
 class CartoonGameplayScreenV3 extends StatefulWidget {
   const CartoonGameplayScreenV3({super.key, this.onExit});
-
   final VoidCallback? onExit;
-
   @override
-  State<CartoonGameplayScreenV3> createState() =>
-      _CartoonGameplayScreenV3State();
+  State<CartoonGameplayScreenV3> createState() => _CartoonGameplayScreenV3State();
 }
 
 class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
@@ -29,16 +26,13 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
   static const _boardBorder = 5.0;
   static const _boardPadding = 6.2;
   static const _boardChrome = _boardBorder + _boardPadding;
-
   final _stackKey = GlobalKey();
   final _boardKey = GlobalKey();
-
   late final AnimationController _clearController;
   late final AnimationController _pickupController;
   late final ValueNotifier<_DragData?> _drag;
   late final ValueNotifier<int> _previewTick;
   late final Listenable _boardRepaint;
-
   BoardGeometry? _geometry;
   RenderBox? _stackBox;
   RenderBox? _boardBox;
@@ -53,14 +47,8 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
     unawaited(BlockSkin.instance.preload());
     _drag = ValueNotifier<_DragData?>(null);
     _previewTick = ValueNotifier<int>(0);
-    _clearController = AnimationController(
-      vsync: this,
-      duration: GameFeelConfig.clearTotal,
-    );
-    _pickupController = AnimationController(
-      vsync: this,
-      duration: GameFeelConfig.pickup,
-    );
+    _clearController = AnimationController(vsync: this, duration: GameFeelConfig.clearTotal);
+    _pickupController = AnimationController(vsync: this, duration: GameFeelConfig.pickup);
     _boardRepaint = Listenable.merge([_previewTick, _clearController]);
     _clearController.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted) {
@@ -84,9 +72,7 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused ||
-        state == AppLifecycleState.hidden) {
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
       unawaited(context.read<GameCubit>().persistNow());
     }
   }
@@ -101,22 +87,14 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
     }
     if (turn.id == _lastTurnId) return;
     _lastTurnId = turn.id;
-
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
     _particles = reducedMotion || turn.lines == 0
         ? const []
-        : buildClearParticles(
-            cells: turn.clearCells,
-            seed: turn.id,
-            lines: turn.lines,
-          );
+        : buildClearParticles(cells: turn.clearCells, seed: turn.id, lines: turn.lines);
     if (state.status == GameStatus.clearing) {
       _clearController.duration = reducedMotion
           ? const Duration(milliseconds: 120)
-          : Duration(
-              milliseconds:
-                  560 + math.min(3, math.max(0, turn.lines - 1)) * 70,
-            );
+          : Duration(milliseconds: 560 + math.min(3, math.max(0, turn.lines - 1)) * 70);
       _clearController.forward(from: 0);
     }
   }
@@ -137,22 +115,15 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
 
   Future<void> _leave() async {
     final cubit = context.read<GameCubit>();
-    if (cubit.state.status == GameStatus.playing ||
-        cubit.state.status == GameStatus.clearing) {
+    if (cubit.state.status == GameStatus.playing || cubit.state.status == GameStatus.clearing) {
       final leave = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Leave this run?'),
           content: const Text('Your current board will be saved.'),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('STAY'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('LEAVE'),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('STAY')),
+            ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('LEAVE')),
           ],
         ),
       );
@@ -163,10 +134,7 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
   }
 
   void _ensureGeometry(double outerBoardSize) {
-    final contentSize = math.max(
-      1.0,
-      outerBoardSize - _boardChrome * 2,
-    );
+    final contentSize = math.max(1.0, outerBoardSize - _boardChrome * 2);
     if (_geometry == null || (_geometry!.size - contentSize).abs() > .01) {
       _geometry = BoardGeometry.fromSize(contentSize);
     }
@@ -174,26 +142,14 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
 
   void _startDrag(int index, Offset globalPosition) {
     final state = context.read<GameCubit>().state;
-    if (state.status != GameStatus.playing ||
-        index < 0 ||
-        index >= state.pieces.length ||
-        state.pieces[index] == null ||
-        _drag.value != null) {
-      return;
-    }
-
+    if (state.status != GameStatus.playing || index < 0 || index >= state.pieces.length || state.pieces[index] == null || _drag.value != null) return;
     final stack = _stackKey.currentContext?.findRenderObject() as RenderBox?;
     final board = _boardKey.currentContext?.findRenderObject() as RenderBox?;
     if (stack == null || board == null || _geometry == null) return;
-
     _stackBox = stack;
     _boardBox = board;
     _dragBoard = state.board;
-    _drag.value = _DragData(
-      index: index,
-      piece: state.pieces[index]!,
-      position: stack.globalToLocal(globalPosition),
-    );
+    _drag.value = _DragData(index: index, piece: state.pieces[index]!, position: stack.globalToLocal(globalPosition));
     _pickupController.forward(from: 0);
     context.read<GameCubit>().pickup(index);
     _updateDrag(globalPosition);
@@ -205,14 +161,7 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
     final board = _boardBox;
     final boardSnapshot = _dragBoard;
     final geometry = _geometry;
-    if (drag == null ||
-        stack == null ||
-        board == null ||
-        boardSnapshot == null ||
-        geometry == null) {
-      return;
-    }
-
+    if (drag == null || stack == null || board == null || boardSnapshot == null || geometry == null) return;
     final stackPosition = stack.globalToLocal(globalPosition);
     final boardPosition = board.globalToLocal(globalPosition);
     final cell = geometry.cellSize;
@@ -223,18 +172,12 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
       ((localY - 82 - piece.height * cell / 2) / cell).round(),
       ((localX - piece.width * cell / 2) / cell).round(),
     );
-
     if (origin == drag.origin) {
       _drag.value = drag.copyWith(position: stackPosition);
       return;
     }
-
     final valid = evaluatePlacement(boardSnapshot, piece, origin).valid;
-    _drag.value = drag.copyWith(
-      position: stackPosition,
-      origin: origin,
-      valid: valid,
-    );
+    _drag.value = drag.copyWith(position: stackPosition, origin: origin, valid: valid);
     _previewTick.value++;
   }
 
@@ -245,7 +188,6 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
     _stackBox = null;
     _boardBox = null;
     _dragBoard = null;
-
     if (drag != null && drag.origin != null) {
       context.read<GameCubit>().drop(index: drag.index, origin: drag.origin!);
     } else {
@@ -258,29 +200,23 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
     return BlocConsumer<GameCubit, GameState>(
       listenWhen: (previous, current) => previous.turn != current.turn,
       listener: (_, state) => _handleTurn(state),
-      builder: (context, state) {
-        return PopScope(
-          canPop: widget.onExit == null,
-          onPopInvokedWithResult: (didPop, result) {
-            if (!didPop) unawaited(_leave());
-          },
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: SafeArea(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final landscape =
-                      constraints.maxWidth > constraints.maxHeight &&
-                      constraints.maxHeight < 600;
-                  return landscape
-                      ? _landscape(constraints, state)
-                      : _portrait(constraints, state);
-                },
-              ),
+      builder: (context, state) => PopScope(
+        canPop: widget.onExit == null,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) unawaited(_leave());
+        },
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final landscape = constraints.maxWidth > constraints.maxHeight && constraints.maxHeight < 600;
+                return landscape ? _landscape(constraints, state) : _portrait(constraints, state);
+              },
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -292,25 +228,12 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
     const headerGap = 14.0;
     const trayGap = 18.0;
     const bottom = 12.0;
-
     final contentWidth = math.min(constraints.maxWidth, 560.0);
     final maxBoardByWidth = contentWidth - 48;
-    final maxBoardByHeight =
-        constraints.maxHeight -
-        headerHeight -
-        headerGap -
-        titleHeight -
-        titleGap -
-        trayGap -
-        trayHeight -
-        bottom;
-    final outerBoardSize = math.max(
-      190.0,
-      math.min(maxBoardByWidth, maxBoardByHeight),
-    );
+    final maxBoardByHeight = constraints.maxHeight - headerHeight - headerGap - titleHeight - titleGap - trayGap - trayHeight - bottom;
+    final outerBoardSize = math.max(190.0, math.min(maxBoardByWidth, maxBoardByHeight));
     _ensureGeometry(outerBoardSize);
     final geometry = _geometry!;
-
     return Stack(
       key: _stackKey,
       children: [
@@ -322,16 +245,9 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Column(
                 children: [
-                  SizedBox(
-                    height: headerHeight,
-                    child: _Hud(
-                      state: state,
-                      onBack: _leave,
-                      onSettings: _showSettings,
-                    ),
-                  ),
+                  SizedBox(height: headerHeight, child: _Hud(state: state, onBack: _leave, onSettings: _showSettings)),
                   const SizedBox(height: headerGap),
-                  _BoardTitle(text: state.turn?.praise ?? 'MAKE SPACE'),
+                  const _BoardTitle(text: 'MAKE SPACE'),
                   const SizedBox(height: titleGap),
                   _BoardSurface(
                     state: state,
@@ -366,13 +282,9 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
 
   Widget _landscape(BoxConstraints constraints, GameState state) {
     final contentWidth = math.min(constraints.maxWidth, 900.0);
-    final outerBoardSize = math.min(
-      constraints.maxHeight - 54,
-      contentWidth * .51,
-    );
+    final outerBoardSize = math.min(constraints.maxHeight - 54, contentWidth * .51);
     _ensureGeometry(outerBoardSize);
     final geometry = _geometry!;
-
     return Stack(
       key: _stackKey,
       children: [
@@ -386,7 +298,7 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _BoardTitle(text: state.turn?.praise ?? 'MAKE SPACE'),
+                      const _BoardTitle(text: 'MAKE SPACE'),
                       const SizedBox(height: 8),
                       _BoardSurface(
                         state: state,
@@ -407,14 +319,7 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      SizedBox(
-                        height: 86,
-                        child: _Hud(
-                          state: state,
-                          onBack: _leave,
-                          onSettings: _showSettings,
-                        ),
-                      ),
+                      SizedBox(height: 86, child: _Hud(state: state, onBack: _leave, onSettings: _showSettings)),
                       const SizedBox(height: 22),
                       _Tray(
                         pieces: state.pieces,
@@ -437,8 +342,7 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
     );
   }
 
-  Widget _dragLayer(BoardGeometry geometry) =>
-      ValueListenableBuilder<_DragData?>(
+  Widget _dragLayer(BoardGeometry geometry) => ValueListenableBuilder<_DragData?>(
         valueListenable: _drag,
         builder: (context, drag, child) {
           if (drag == null) return const SizedBox.shrink();
@@ -446,24 +350,14 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
             animation: _pickupController,
             builder: (context, child) => Positioned(
               left: drag.position.dx - drag.piece.width * geometry.cellSize / 2,
-              top:
-                  drag.position.dy -
-                  90 -
-                  drag.piece.height * geometry.cellSize / 2,
+              top: drag.position.dy - 90 - drag.piece.height * geometry.cellSize / 2,
               child: IgnorePointer(
                 child: Transform.scale(
-                  scale:
-                      1 +
-                      Curves.easeOut.transform(_pickupController.value) * .06,
+                  scale: 1 + Curves.easeOut.transform(_pickupController.value) * .06,
                   child: SizedBox(
                     width: drag.piece.width * geometry.cellSize,
                     height: drag.piece.height * geometry.cellSize,
-                    child: CustomPaint(
-                      painter: PiecePainter(
-                        piece: drag.piece,
-                        cellSize: geometry.cellSize,
-                      ),
-                    ),
+                    child: CustomPaint(painter: PiecePainter(piece: drag.piece, cellSize: geometry.cellSize)),
                   ),
                 ),
               ),
@@ -473,29 +367,19 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
       );
 
   List<Widget> _overlays(GameState state) => [
-        if (state.status == GameStatus.continuePrompt ||
-            state.status == GameStatus.adLoading ||
-            state.status == GameStatus.reviving)
+        if (state.status == GameStatus.continuePrompt || state.status == GameStatus.adLoading || state.status == GameStatus.reviving)
           ContinueOverlay(state: state),
-        if (state.status == GameStatus.results)
-          ResultsOverlay(state: state, onExit: widget.onExit),
-        if (state.status == GameStatus.modeSuccess ||
-            state.status == GameStatus.modeFailure)
+        if (state.status == GameStatus.results) ResultsOverlay(state: state, onExit: widget.onExit),
+        if (state.status == GameStatus.modeSuccess || state.status == GameStatus.modeFailure)
           ModeResultOverlay(state: state, onExit: widget.onExit),
       ];
 }
 
 class _Hud extends StatelessWidget {
-  const _Hud({
-    required this.state,
-    required this.onBack,
-    required this.onSettings,
-  });
-
+  const _Hud({required this.state, required this.onBack, required this.onSettings});
   final GameState state;
   final VoidCallback onBack;
   final VoidCallback onSettings;
-
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(8, 7, 8, 0),
@@ -593,7 +477,7 @@ class _BoardSurface extends StatelessWidget {
         ? null
         : TurnDrawData(clearCells: turn.clearCells, rows: _rows(turn.clearCells), columns: _columns(turn.clearCells));
     return Stack(
-      alignment: Alignment.bottomCenter,
+      alignment: Alignment.center,
       clipBehavior: Clip.none,
       children: [
         Container(
@@ -639,12 +523,16 @@ class _BoardSurface extends StatelessWidget {
           ),
         ),
         if (turn != null && turn.points > 0)
-          Positioned(
-            bottom: 10,
+          IgnorePointer(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(color: CartoonColors.yellow, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white, width: 2), boxShadow: const [BoxShadow(color: Color(0x30000000), blurRadius: 4, offset: Offset(0, 4))]),
-              child: Text('+${turn.points}', style: const TextStyle(color: CartoonColors.text, fontSize: 16, fontWeight: FontWeight.w900)),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+              decoration: BoxDecoration(
+                color: CartoonColors.yellow,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: const [BoxShadow(color: Color(0x38000000), blurRadius: 6, offset: Offset(0, 4))],
+              ),
+              child: Text('+${turn.points}', style: const TextStyle(color: CartoonColors.text, fontSize: 20, fontWeight: FontWeight.w900)),
             ),
           ),
       ],
