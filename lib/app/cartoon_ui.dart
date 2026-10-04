@@ -214,13 +214,6 @@ class _GlossyGameButtonState extends State<GlossyGameButton> {
             ),
             borderRadius: BorderRadius.circular(26),
             border: Border.all(color: Colors.white.withValues(alpha: .65), width: 2),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x55000000),
-                blurRadius: 6,
-                offset: Offset(0, 7),
-              ),
-            ],
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(26),
@@ -282,7 +275,7 @@ class RoundGameButton extends StatefulWidget {
     required this.icon,
     required this.onTap,
     this.tooltip,
-    this.showShadow = true,
+    this.showShadow = false,
   });
 
   final IconData icon;
