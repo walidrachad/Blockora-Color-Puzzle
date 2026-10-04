@@ -144,129 +144,140 @@ class CartoonHomeScreen extends StatelessWidget {
                 SafeArea(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final width = math.min(constraints.maxWidth, 600.0);
-                      final compact = constraints.maxHeight < 720;
-                      return SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        child: Center(
-                          child: SizedBox(
-                            width: width,
-                            child: Padding(
-                              padding: EdgeInsets.fromLTRB(
-                                18,
-                                compact ? 10 : 16,
-                                18,
-                                24,
-                              ),
-                              child: Column(
-                                children: [
-                                  _CornerMenu(
-                                    musicEnabled: state.preferences.music,
-                                    onToggleMusic: () => cubit.updatePreferences(
-                                      state.preferences.copyWith(
-                                        music: !state.preferences.music,
-                                      ),
-                                    ),
-                                    onShowBestScore: () =>
-                                        _showBestScore(context, best),
-                                  ),
-                                  SizedBox(height: compact ? 10 : 16),
-                                  const _Logo(),
-                                  SizedBox(height: compact ? 8 : 14),
-                                  Stack(
-                                    clipBehavior: Clip.none,
-                                    alignment: Alignment.topCenter,
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 34),
-                                        child: CartoonPanel(
-                                          padding: const EdgeInsets.fromLTRB(
-                                            18,
-                                            46,
-                                            18,
-                                            20,
-                                          ),
-                                          child: Column(
-                                            children: [
-                                              const _Stars(),
-                                              const SizedBox(height: 8),
-                                              const _BoardPreview(),
-                                              const SizedBox(height: 14),
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  CartoonScoreCard(
-                                                    label: 'BEST SCORE',
-                                                    value: '$best',
-                                                    icon: Icons
-                                                        .emoji_events_rounded,
-                                                  ),
-                                                  const SizedBox(width: 10),
-                                                  const CartoonScoreCard(
-                                                    label: 'MODE',
-                                                    value: '∞',
-                                                    icon: Icons
-                                                        .all_inclusive_rounded,
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 16),
-                                              if (canResume) ...[
-                                                GlossyGameButton(
-                                                  label:
-                                                      'CONTINUE  ${state.score}',
-                                                  icon: Icons
-                                                      .restore_rounded,
-                                                  green: false,
-                                                  onTap: () => _openGame(
-                                                    context,
-                                                    fresh: false,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 10),
-                                              ],
-                                              GlossyGameButton(
-                                                label: 'PLAY',
-                                                icon:
-                                                    Icons.play_arrow_rounded,
-                                                onTap: () => _openGame(
-                                                  context,
-                                                  fresh: true,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
+                      final viewportWidth = math.min(
+                        constraints.maxWidth,
+                        600.0,
+                      );
+                      return Center(
+                        child: SizedBox(
+                          width: viewportWidth,
+                          height: constraints.maxHeight,
+                          child: FittedBox(
+                            fit: BoxFit.contain,
+                            alignment: Alignment.topCenter,
+                            child: SizedBox(
+                              width: 420,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  18,
+                                  14,
+                                  18,
+                                  22,
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _CornerMenu(
+                                      musicEnabled: state.preferences.music,
+                                      onToggleMusic: () =>
+                                          cubit.updatePreferences(
+                                        state.preferences.copyWith(
+                                          music: !state.preferences.music,
                                         ),
                                       ),
-                                      const CartoonRibbon(
-                                        text: 'PLAY NOW',
-                                        icon: Icons.star_rounded,
-                                        width: 280,
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 18),
-                                  const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      _Badge(
-                                        icon: Icons.timer_off_rounded,
-                                        text: 'NO TIMER',
-                                      ),
-                                      SizedBox(width: 8),
-                                      _Badge(
-                                        icon: Icons.favorite_rounded,
-                                        text: 'REVIVE',
-                                      ),
-                                      SizedBox(width: 8),
-                                      _Badge(
-                                        icon: Icons.wifi_off_rounded,
-                                        text: 'OFFLINE',
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                      onShowBestScore: () =>
+                                          _showBestScore(context, best),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    const _Logo(),
+                                    const SizedBox(height: 12),
+                                    Stack(
+                                      clipBehavior: Clip.none,
+                                      alignment: Alignment.topCenter,
+                                      children: [
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 34),
+                                          child: CartoonPanel(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              18,
+                                              46,
+                                              18,
+                                              20,
+                                            ),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const _Stars(),
+                                                const SizedBox(height: 8),
+                                                const _BoardPreview(),
+                                                const SizedBox(height: 14),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    CartoonScoreCard(
+                                                      label: 'BEST SCORE',
+                                                      value: '$best',
+                                                      icon: Icons
+                                                          .emoji_events_rounded,
+                                                    ),
+                                                    const SizedBox(width: 10),
+                                                    const CartoonScoreCard(
+                                                      label: 'MODE',
+                                                      value: '∞',
+                                                      icon: Icons
+                                                          .all_inclusive_rounded,
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 16),
+                                                if (canResume) ...[
+                                                  GlossyGameButton(
+                                                    label:
+                                                        'CONTINUE  ${state.score}',
+                                                    icon: Icons.restore_rounded,
+                                                    green: false,
+                                                    onTap: () => _openGame(
+                                                      context,
+                                                      fresh: false,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 10),
+                                                ],
+                                                GlossyGameButton(
+                                                  label: 'PLAY',
+                                                  icon:
+                                                      Icons.play_arrow_rounded,
+                                                  onTap: () => _openGame(
+                                                    context,
+                                                    fresh: true,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        const CartoonRibbon(
+                                          text: 'PLAY NOW',
+                                          icon: Icons.star_rounded,
+                                          width: 280,
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 18),
+                                    const Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        _Badge(
+                                          icon: Icons.timer_off_rounded,
+                                          text: 'NO TIMER',
+                                        ),
+                                        SizedBox(width: 8),
+                                        _Badge(
+                                          icon: Icons.favorite_rounded,
+                                          text: 'REVIVE',
+                                        ),
+                                        SizedBox(width: 8),
+                                        _Badge(
+                                          icon: Icons.wifi_off_rounded,
+                                          text: 'OFFLINE',
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
