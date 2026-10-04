@@ -217,10 +217,6 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
     final boardPosition = board.globalToLocal(globalPosition);
     final cell = geometry.cellSize;
     final piece = drag.piece;
-
-    // BoardGeometry starts after BOTH the purple border and cream padding.
-    // Keeping hit-testing on the exact same origin as painting prevents
-    // right/left edge drift and clipped final columns.
     final localX = boardPosition.dx - _boardChrome;
     final localY = boardPosition.dy - _boardChrome;
     final origin = GridPoint(
@@ -269,7 +265,7 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
             if (!didPop) unawaited(_leave());
           },
           child: Scaffold(
-            backgroundColor: CartoonColors.paper,
+            backgroundColor: Colors.transparent,
             body: SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -318,7 +314,6 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
     return Stack(
       key: _stackKey,
       children: [
-        const Positioned.fill(child: _PaperDots()),
         Align(
           alignment: Alignment.topCenter,
           child: SizedBox(
@@ -381,7 +376,6 @@ class _CartoonGameplayScreenV3State extends State<CartoonGameplayScreenV3>
     return Stack(
       key: _stackKey,
       children: [
-        const Positioned.fill(child: _PaperDots()),
         Center(
           child: SizedBox(
             width: contentWidth,
@@ -507,11 +501,7 @@ class _Hud extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(8, 7, 8, 0),
         child: Row(
           children: [
-            RoundGameButton(
-              icon: Icons.home_rounded,
-              onTap: onBack,
-              tooltip: 'Home',
-            ),
+            RoundGameButton(icon: Icons.home_rounded, onTap: onBack, tooltip: 'Home'),
             const SizedBox(width: 10),
             Expanded(
               child: Container(
@@ -520,13 +510,7 @@ class _Hud extends StatelessWidget {
                   color: CartoonColors.paperWarm,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: CartoonColors.outline, width: 3),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x2f000000),
-                      blurRadius: 5,
-                      offset: Offset(0, 5),
-                    ),
-                  ],
+                  boxShadow: const [BoxShadow(color: Color(0x2f000000), blurRadius: 5, offset: Offset(0, 5))],
                 ),
                 child: Column(
                   children: [
@@ -534,63 +518,28 @@ class _Hud extends StatelessWidget {
                       height: 25,
                       margin: const EdgeInsets.fromLTRB(34, 5, 34, 0),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xffff62ae), Color(0xffdf2d83)],
-                        ),
+                        gradient: const LinearGradient(colors: [Color(0xffff62ae), Color(0xffdf2d83)]),
                         borderRadius: BorderRadius.circular(13),
                       ),
                       alignment: Alignment.center,
-                      child: const Text(
-                        'SCORE',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.1,
-                        ),
-                      ),
+                      child: const Text('SCORE', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.1)),
                     ),
                     Expanded(
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(
-                            Icons.star_rounded,
-                            color: CartoonColors.yellow,
-                            size: 21,
-                          ),
+                          const Icon(Icons.star_rounded, color: CartoonColors.yellow, size: 21),
                           const SizedBox(width: 5),
                           AnimatedSwitcher(
                             duration: const Duration(milliseconds: 180),
-                            child: Text(
-                              '${state.score}',
-                              key: ValueKey(state.score),
-                              style: const TextStyle(
-                                color: CartoonColors.text,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
+                            child: Text('${state.score}', key: ValueKey(state.score), style: const TextStyle(color: CartoonColors.text, fontSize: 22, fontWeight: FontWeight.w900)),
                           ),
                           if (state.combo > 1) ...[
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: CartoonColors.ribbon,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                'x${state.combo}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(color: CartoonColors.ribbon, borderRadius: BorderRadius.circular(10)),
+                              child: Text('x${state.combo}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
                             ),
                           ],
                         ],
@@ -601,11 +550,7 @@ class _Hud extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            RoundGameButton(
-              icon: Icons.settings_rounded,
-              onTap: onSettings,
-              tooltip: 'Settings',
-            ),
+            RoundGameButton(icon: Icons.settings_rounded, onTap: onSettings, tooltip: 'Settings'),
           ],
         ),
       );
@@ -613,54 +558,24 @@ class _Hud extends StatelessWidget {
 
 class _BoardTitle extends StatelessWidget {
   const _BoardTitle({required this.text});
-
   final String text;
-
   @override
   Widget build(BuildContext context) => Container(
         height: 32,
         margin: const EdgeInsets.symmetric(horizontal: 22),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xffff61ad), Color(0xffdc2d82)],
-          ),
+          gradient: const LinearGradient(colors: [Color(0xffff61ad), Color(0xffdc2d82)]),
           borderRadius: BorderRadius.circular(17),
           border: Border.all(color: Colors.white.withValues(alpha: .45)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x30000000),
-              blurRadius: 4,
-              offset: Offset(0, 4),
-            ),
-          ],
+          boxShadow: const [BoxShadow(color: Color(0x30000000), blurRadius: 4, offset: Offset(0, 4))],
         ),
         alignment: Alignment.center,
-        child: Text(
-          text,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 11,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.2,
-          ),
-        ),
+        child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
       );
 }
 
 class _BoardSurface extends StatelessWidget {
-  const _BoardSurface({
-    required this.state,
-    required this.boardKey,
-    required this.outerSize,
-    required this.geometry,
-    required this.drag,
-    required this.repaint,
-    required this.clearController,
-    required this.particles,
-  });
-
+  const _BoardSurface({required this.state, required this.boardKey, required this.outerSize, required this.geometry, required this.drag, required this.repaint, required this.clearController, required this.particles});
   final GameState state;
   final GlobalKey boardKey;
   final double outerSize;
@@ -676,12 +591,7 @@ class _BoardSurface extends StatelessWidget {
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
     final drawData = turn == null || state.status != GameStatus.clearing
         ? null
-        : TurnDrawData(
-            clearCells: turn.clearCells,
-            rows: _rows(turn.clearCells),
-            columns: _columns(turn.clearCells),
-          );
-
+        : TurnDrawData(clearCells: turn.clearCells, rows: _rows(turn.clearCells), columns: _columns(turn.clearCells));
     return Stack(
       alignment: Alignment.bottomCenter,
       clipBehavior: Clip.none,
@@ -695,13 +605,7 @@ class _BoardSurface extends StatelessWidget {
             color: CartoonColors.paper,
             borderRadius: BorderRadius.circular(27),
             border: Border.all(color: CartoonColors.outline, width: 5),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x40000000),
-                blurRadius: 8,
-                offset: Offset(5, 7),
-              ),
-            ],
+            boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 8, offset: Offset(5, 7))],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(18),
@@ -709,15 +613,7 @@ class _BoardSurface extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  CustomPaint(
-                    painter: _CreamBoardPainter(
-                      board: state.board,
-                      geometry: geometry,
-                      hiddenCells: state.status == GameStatus.clearing
-                          ? turn?.clearCells ?? const {}
-                          : const {},
-                    ),
-                  ),
+                  CustomPaint(painter: _CreamBoardPainter(board: state.board, geometry: geometry, hiddenCells: state.status == GameStatus.clearing ? turn?.clearCells ?? const {} : const {})),
                   AnimatedBuilder(
                     animation: repaint,
                     builder: (context, child) {
@@ -747,68 +643,27 @@ class _BoardSurface extends StatelessWidget {
             bottom: 10,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: CartoonColors.yellow,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white, width: 2),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x30000000),
-                    blurRadius: 4,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Text(
-                '+${turn.points}',
-                style: const TextStyle(
-                  color: CartoonColors.text,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
+              decoration: BoxDecoration(color: CartoonColors.yellow, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white, width: 2), boxShadow: const [BoxShadow(color: Color(0x30000000), blurRadius: 4, offset: Offset(0, 4))]),
+              child: Text('+${turn.points}', style: const TextStyle(color: CartoonColors.text, fontSize: 16, fontWeight: FontWeight.w900)),
             ),
           ),
       ],
     );
   }
 
-  static List<int> _rows(Set<GridPoint> cells) => [
-        for (var row = 0; row < Board.size; row++)
-          if ([
-            for (var col = 0; col < Board.size; col++) GridPoint(row, col),
-          ].every(cells.contains))
-            row,
-      ];
-
-  static List<int> _columns(Set<GridPoint> cells) => [
-        for (var col = 0; col < Board.size; col++)
-          if ([
-            for (var row = 0; row < Board.size; row++) GridPoint(row, col),
-          ].every(cells.contains))
-            col,
-      ];
+  static List<int> _rows(Set<GridPoint> cells) => [for (var row = 0; row < Board.size; row++) if ([for (var col = 0; col < Board.size; col++) GridPoint(row, col)].every(cells.contains)) row];
+  static List<int> _columns(Set<GridPoint> cells) => [for (var col = 0; col < Board.size; col++) if ([for (var row = 0; row < Board.size; row++) GridPoint(row, col)].every(cells.contains)) col];
 }
 
 class _CreamBoardPainter extends CustomPainter {
-  _CreamBoardPainter({
-    required this.board,
-    required this.geometry,
-    this.hiddenCells = const {},
-  }) : super(repaint: BlockSkin.instance);
-
+  _CreamBoardPainter({required this.board, required this.geometry, this.hiddenCells = const {}}) : super(repaint: BlockSkin.instance);
   final Board board;
   final BoardGeometry geometry;
   final Set<GridPoint> hiddenCells;
-
   @override
   void paint(Canvas canvas, Size size) {
     final empty = Paint()..color = const Color(0xffffd9a9);
-    final edge = Paint()
-      ..color = const Color(0xffedbf86)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4;
-
+    final edge = Paint()..color = const Color(0xffedbf86)..style = PaintingStyle.stroke..strokeWidth = 1.4;
     for (var row = 0; row < Board.size; row++) {
       for (var col = 0; col < Board.size; col++) {
         final point = GridPoint(row, col);
@@ -821,31 +676,18 @@ class _CreamBoardPainter extends CustomPainter {
       }
     }
   }
-
   @override
-  bool shouldRepaint(covariant _CreamBoardPainter oldDelegate) =>
-      oldDelegate.board != board ||
-      oldDelegate.geometry != geometry ||
-      oldDelegate.hiddenCells != hiddenCells;
+  bool shouldRepaint(covariant _CreamBoardPainter oldDelegate) => oldDelegate.board != board || oldDelegate.geometry != geometry || oldDelegate.hiddenCells != hiddenCells;
 }
 
 class _Tray extends StatelessWidget {
-  const _Tray({
-    required this.pieces,
-    required this.disabled,
-    required this.height,
-    required this.onStart,
-    required this.onUpdate,
-    required this.onEnd,
-  });
-
+  const _Tray({required this.pieces, required this.disabled, required this.height, required this.onStart, required this.onUpdate, required this.onEnd});
   final List<Piece?> pieces;
   final bool disabled;
   final double height;
   final void Function(int, Offset) onStart;
   final void Function(Offset) onUpdate;
   final VoidCallback onEnd;
-
   @override
   Widget build(BuildContext context) => Stack(
         clipBehavior: Clip.none,
@@ -855,57 +697,15 @@ class _Tray extends StatelessWidget {
             height: height,
             margin: const EdgeInsets.symmetric(horizontal: 14),
             padding: const EdgeInsets.fromLTRB(10, 25, 10, 9),
-            decoration: BoxDecoration(
-              color: CartoonColors.paperWarm,
-              borderRadius: BorderRadius.circular(23),
-              border: Border.all(color: CartoonColors.outline, width: 4),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x33000000),
-                  blurRadius: 6,
-                  offset: Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                for (var index = 0; index < pieces.length; index++)
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: _PieceSlot(
-                        piece: pieces[index],
-                        index: index,
-                        disabled: disabled,
-                        onStart: onStart,
-                        onUpdate: onUpdate,
-                        onEnd: onEnd,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            decoration: BoxDecoration(color: CartoonColors.paperWarm, borderRadius: BorderRadius.circular(23), border: Border.all(color: CartoonColors.outline, width: 4), boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 6, offset: Offset(0, 6))]),
+            child: Row(children: [for (var index = 0; index < pieces.length; index++) Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: _PieceSlot(piece: pieces[index], index: index, disabled: disabled, onStart: onStart, onUpdate: onUpdate, onEnd: onEnd)))]),
           ),
           Positioned(
             top: -12,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xffb7e928), Color(0xff76bc14)],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withValues(alpha: .45)),
-              ),
-              child: const Text(
-                'YOUR SHAPES',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.2,
-                ),
-              ),
+              decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xffb7e928), Color(0xff76bc14)]), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withValues(alpha: .45))),
+              child: const Text('YOUR SHAPES', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
             ),
           ),
         ],
@@ -913,109 +713,42 @@ class _Tray extends StatelessWidget {
 }
 
 class _PieceSlot extends StatelessWidget {
-  const _PieceSlot({
-    required this.piece,
-    required this.index,
-    required this.disabled,
-    required this.onStart,
-    required this.onUpdate,
-    required this.onEnd,
-  });
-
+  const _PieceSlot({required this.piece, required this.index, required this.disabled, required this.onStart, required this.onUpdate, required this.onEnd});
   final Piece? piece;
   final int index;
   final bool disabled;
   final void Function(int, Offset) onStart;
   final void Function(Offset) onUpdate;
   final VoidCallback onEnd;
-
   @override
   Widget build(BuildContext context) => GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onPanStart: disabled || piece == null
-            ? null
-            : (details) => onStart(index, details.globalPosition),
-        onPanUpdate: disabled || piece == null
-            ? null
-            : (details) => onUpdate(details.globalPosition),
+        onPanStart: disabled || piece == null ? null : (details) => onStart(index, details.globalPosition),
+        onPanUpdate: disabled || piece == null ? null : (details) => onUpdate(details.globalPosition),
         onPanEnd: disabled || piece == null ? null : (_) => onEnd(),
         onPanCancel: disabled || piece == null ? null : onEnd,
         child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xffffefd7),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xffe6bd91), width: 2),
-          ),
+          decoration: BoxDecoration(color: const Color(0xffffefd7), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xffe6bd91), width: 2)),
           alignment: Alignment.center,
           child: piece == null
-              ? const Icon(
-                  Icons.check_rounded,
-                  color: CartoonColors.green,
-                  size: 28,
-                )
+              ? const Icon(Icons.check_rounded, color: CartoonColors.green, size: 28)
               : LayoutBuilder(
                   builder: (context, constraints) {
-                    final cell = math.min(
-                      (constraints.maxWidth - 16) / piece!.width,
-                      (constraints.maxHeight - 16) / piece!.height,
-                    );
-                    return SizedBox(
-                      width: piece!.width * cell,
-                      height: piece!.height * cell,
-                      child: CustomPaint(
-                        painter: PiecePainter(piece: piece!, cellSize: cell),
-                      ),
-                    );
+                    final cell = math.min((constraints.maxWidth - 16) / piece!.width, (constraints.maxHeight - 16) / piece!.height);
+                    return SizedBox(width: piece!.width * cell, height: piece!.height * cell, child: CustomPaint(painter: PiecePainter(piece: piece!, cellSize: cell)));
                   },
                 ),
         ),
       );
 }
 
-class _PaperDots extends StatelessWidget {
-  const _PaperDots();
-
-  @override
-  Widget build(BuildContext context) => CustomPaint(painter: _DotsPainter());
-}
-
-class _DotsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xffe8c7ba).withValues(alpha: .22);
-    for (double y = 12; y < size.height; y += 30) {
-      for (double x = 12; x < size.width; x += 30) {
-        canvas.drawCircle(Offset(x, y), 1.4, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
 @immutable
 class _DragData {
-  const _DragData({
-    required this.index,
-    required this.piece,
-    required this.position,
-    this.origin,
-    this.valid = false,
-  });
-
+  const _DragData({required this.index, required this.piece, required this.position, this.origin, this.valid = false});
   final int index;
   final Piece piece;
   final Offset position;
   final GridPoint? origin;
   final bool valid;
-
-  _DragData copyWith({Offset? position, GridPoint? origin, bool? valid}) =>
-      _DragData(
-        index: index,
-        piece: piece,
-        position: position ?? this.position,
-        origin: origin ?? this.origin,
-        valid: valid ?? this.valid,
-      );
+  _DragData copyWith({Offset? position, GridPoint? origin, bool? valid}) => _DragData(index: index, piece: piece, position: position ?? this.position, origin: origin ?? this.origin, valid: valid ?? this.valid);
 }
