@@ -282,11 +282,13 @@ class RoundGameButton extends StatefulWidget {
     required this.icon,
     required this.onTap,
     this.tooltip,
+    this.showShadow = true,
   });
 
   final IconData icon;
   final VoidCallback onTap;
   final String? tooltip;
+  final bool showShadow;
 
   @override
   State<RoundGameButton> createState() => _RoundGameButtonState();
@@ -314,13 +316,15 @@ class _RoundGameButtonState extends State<RoundGameButton> {
               colors: [Color(0xffb7e72c), CartoonColors.greenDark],
             ),
             border: Border.all(color: Colors.white.withValues(alpha: .65), width: 2),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x55000000),
-                blurRadius: 6,
-                offset: Offset(0, 6),
-              ),
-            ],
+            boxShadow: widget.showShadow
+                ? const [
+                    BoxShadow(
+                      color: Color(0x55000000),
+                      blurRadius: 6,
+                      offset: Offset(0, 6),
+                    ),
+                  ]
+                : const [],
           ),
           child: InkWell(
             customBorder: const CircleBorder(),
