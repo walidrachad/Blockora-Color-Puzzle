@@ -523,17 +523,10 @@ class _BoardSurface extends StatelessWidget {
           ),
         ),
         if (turn != null && turn.points > 0)
-          IgnorePointer(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-              decoration: BoxDecoration(
-                color: CartoonColors.yellow,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white, width: 2),
-                boxShadow: const [BoxShadow(color: Color(0x38000000), blurRadius: 6, offset: Offset(0, 4))],
-              ),
-              child: Text('+${turn.points}', style: const TextStyle(color: CartoonColors.text, fontSize: 20, fontWeight: FontWeight.w900)),
-            ),
+          _ScoreFadePopup(
+            key: ValueKey('score-popup-${turn.id}'),
+            points: turn.points,
+            reducedMotion: reducedMotion,
           ),
       ],
     );
@@ -541,6 +534,78 @@ class _BoardSurface extends StatelessWidget {
 
   static List<int> _rows(Set<GridPoint> cells) => [for (var row = 0; row < Board.size; row++) if ([for (var col = 0; col < Board.size; col++) GridPoint(row, col)].every(cells.contains)) row];
   static List<int> _columns(Set<GridPoint> cells) => [for (var col = 0; col < Board.size; col++) if ([for (var row = 0; row < Board.size; row++) GridPoint(row, col)].every(cells.contains)) col];
+}
+
+class _ScoreFadePopup extends StatelessWidget {
+  const _ScoreFadePopup({
+    super.key,
+    required this.points,
+    required this.reducedMotion,
+  });
+
+  final int points;
+  final bool reducedMotion;
+
+  @override
+  Widget build(BuildContext context) {
+    if (reducedMotion) {
+      return IgnorePointer(child: _ScoreBadge(points: points));
+    }
+
+    return IgnorePointer(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 1250),
+        curve: Curves.linear,
+        builder: (context, t, child) {
+          final opacity = t < .18
+              ? (t / .18).clamp(0.0, 1.0)
+              : t < .62
+                  ? 1.0
+                  : ((1 - t) / .38).clamp(0.0, 1.0);
+          final entry = Curves.easeOutBack.transform((t / .22).clamp(0.0, 1.0));
+          return Opacity(
+            opacity: opacity,
+            child: Transform.scale(
+              scale: .82 + entry * .18,
+              child: child,
+            ),
+          );
+        },
+        child: _ScoreBadge(points: points),
+      ),
+    );
+  }
+}
+
+class _ScoreBadge extends StatelessWidget {
+  const _ScoreBadge({required this.points});
+  final int points;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+        decoration: BoxDecoration(
+          color: CartoonColors.yellow,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white, width: 2),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x38000000),
+              blurRadius: 6,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Text(
+          '+$points',
+          style: const TextStyle(
+            color: CartoonColors.text,
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      );
 }
 
 class _CreamBoardPainter extends CustomPainter {
