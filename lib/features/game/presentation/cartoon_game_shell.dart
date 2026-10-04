@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../app/cartoon_ui.dart';
 import '../application/game_cubit.dart';
-import 'cartoon_gameplay_screen_v2.dart';
+import 'cartoon_gameplay_screen_v3.dart';
 
 class CartoonGameShell extends StatelessWidget {
   const CartoonGameShell({
@@ -53,7 +53,7 @@ class CartoonGameShell extends StatelessWidget {
                 clipBehavior: Clip.antiAlias,
                 child: BlocProvider.value(
                   value: cubit,
-                  child: CartoonGameplayScreenV2(onExit: onExit),
+                  child: CartoonGameplayScreenV3(onExit: onExit),
                 ),
               ),
             ),
