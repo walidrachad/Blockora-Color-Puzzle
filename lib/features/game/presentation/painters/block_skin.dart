@@ -61,8 +61,8 @@ class BlockSkin extends ChangeNotifier {
     } else {
       // Immediate first-frame rendering while the local SVGs are decoding.
       final color = PrismColors.blockColors[colorIndex];
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, Radius.circular(rect.width * .25)),
+      canvas.drawRect(
+        rect,
         Paint()
           ..shader = LinearGradient(
             begin: Alignment.topLeft,
@@ -70,18 +70,25 @@ class BlockSkin extends ChangeNotifier {
             colors: [Color.lerp(color, Colors.white, .4)!, color],
           ).createShader(rect),
       );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(
-            rect.left + rect.width * .16,
-            rect.top + rect.height * .12,
-            rect.width * .42,
-            rect.height * .08,
-          ),
-          Radius.circular(rect.width * .04),
-        ),
-        Paint()..color = Colors.white.withValues(alpha: .6),
-      );
+      final face = rect.deflate(rect.width * .13);
+      final bevels = [
+        [rect.topLeft, rect.topRight, face.topRight, face.topLeft],
+        [rect.topLeft, face.topLeft, face.bottomLeft, rect.bottomLeft],
+        [rect.topRight, rect.bottomRight, face.bottomRight, face.topRight],
+        [rect.bottomLeft, face.bottomLeft, face.bottomRight, rect.bottomRight],
+      ];
+      final shades = [
+        Colors.white.withValues(alpha: .5),
+        Colors.white.withValues(alpha: .25),
+        Colors.black.withValues(alpha: .22),
+        Colors.black.withValues(alpha: .4),
+      ];
+      for (var side = 0; side < bevels.length; side++) {
+        canvas.drawPath(
+          Path()..addPolygon(bevels[side], true),
+          Paint()..color = shades[side],
+        );
+      }
     }
     if (opacity < 1) canvas.restore();
     canvas.restore();

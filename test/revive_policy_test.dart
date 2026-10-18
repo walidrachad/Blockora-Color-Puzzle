@@ -5,7 +5,7 @@ import 'package:prism_puzzle/features/game/domain/models.dart';
 import 'package:prism_puzzle/features/game/domain/revive_policy.dart';
 
 void main() {
-  final asym = PieceLibrary.byId['asym']!;
+  final lDown = PieceLibrary.byId['l_down']!;
   final dot = PieceLibrary.byId['dot']!;
 
   test('clear_most_filled_line clears the deterministic fullest row', () {
@@ -16,22 +16,22 @@ void main() {
     for (var col = 0; col < 4; col++) {
       board = board.withCell(GridPoint(1, col), 1);
     }
-    final result = ConfiguredRevivePolicy().rescue(board, [asym]);
+    final result = ConfiguredRevivePolicy().rescue(board, [lDown]);
     expect(result.rescuedCells.length, 6);
     expect(result.rescuedCells, contains(const GridPoint(0, 5)));
-    expect(hasAnyMove(result.board, [asym]), isTrue);
+    expect(hasAnyMove(result.board, [lDown]), isTrue);
   });
 
   test(
     'remove_last_placed_piece uses placement IDs and supports partial cells',
     () {
-      final board = Board().place(asym, const GridPoint(0, 0), placementId: 7);
+      final board = Board().place(lDown, const GridPoint(0, 0), placementId: 7);
       final result = const ConfiguredRevivePolicy(
         strategy: AdsReviveStrategy.removeLastPlacedPiece,
-      ).rescue(board, [asym]);
+      ).rescue(board, [lDown]);
       expect(result.rescuedCells.length, 4);
       expect(result.board.filledCount, 0);
-      expect(hasAnyMove(result.board, [asym]), isTrue);
+      expect(hasAnyMove(result.board, [lDown]), isTrue);
     },
   );
 
@@ -41,8 +41,8 @@ void main() {
       final full = Board(
         List.generate(Board.size, (_) => List<int?>.filled(Board.size, 1)),
       );
-      final result = const ConfiguredRevivePolicy().rescue(full, [asym]);
-      expect(hasAnyMove(result.board, [asym]), isTrue);
+      final result = const ConfiguredRevivePolicy().rescue(full, [lDown]);
+      expect(hasAnyMove(result.board, [lDown]), isTrue);
       expect(result.rescuedCells, isNotEmpty);
     },
   );

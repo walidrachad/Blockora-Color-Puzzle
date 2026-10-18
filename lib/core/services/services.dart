@@ -107,29 +107,39 @@ class AppPreferences {
     this.sound = true,
     this.music = true,
     this.vibration = true,
+    this.hasCompletedOnboarding = false,
   });
 
   final bool sound;
   final bool music;
   final bool vibration;
+  final bool hasCompletedOnboarding;
 
-  AppPreferences copyWith({bool? sound, bool? music, bool? vibration}) =>
-      AppPreferences(
-        sound: sound ?? this.sound,
-        music: music ?? this.music,
-        vibration: vibration ?? this.vibration,
-      );
+  AppPreferences copyWith({
+    bool? sound,
+    bool? music,
+    bool? vibration,
+    bool? hasCompletedOnboarding,
+  }) => AppPreferences(
+    sound: sound ?? this.sound,
+    music: music ?? this.music,
+    vibration: vibration ?? this.vibration,
+    hasCompletedOnboarding:
+        hasCompletedOnboarding ?? this.hasCompletedOnboarding,
+  );
 
   Map<String, dynamic> toJson() => {
     'sound': sound,
     'music': music,
     'vibration': vibration,
+    'hasCompletedOnboarding': hasCompletedOnboarding,
   };
 
   factory AppPreferences.fromJson(Map<String, dynamic> json) => AppPreferences(
     sound: json['sound'] as bool? ?? true,
     music: json['music'] as bool? ?? true,
     vibration: json['vibration'] as bool? ?? true,
+    hasCompletedOnboarding: json['hasCompletedOnboarding'] as bool? ?? false,
   );
 }
 

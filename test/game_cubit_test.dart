@@ -135,17 +135,17 @@ void main() {
     expect(audio.cues, ['pickup', 'invalid_drop']);
   });
 
-  test('asym gameplay placement occupies exactly four board cells', () {
-    final asym = PieceLibrary.byId['asym']!;
-    cubit.debugSetBoard(Board(), pieces: [asym, null, null]);
+  test('lDown gameplay placement occupies exactly four board cells', () {
+    final lDown = PieceLibrary.byId['l_down']!;
+    cubit.debugSetBoard(Board(), pieces: [lDown, null, null]);
     cubit.pickup(0);
     cubit.drop(index: 0, origin: const GridPoint(0, 0));
 
     expect(cubit.state.board.filledCount, 4);
-    expect(cubit.state.board[const GridPoint(0, 0)], asym.color);
-    expect(cubit.state.board[const GridPoint(0, 1)], asym.color);
-    expect(cubit.state.board[const GridPoint(1, 1)], asym.color);
-    expect(cubit.state.board[const GridPoint(2, 1)], asym.color);
+    expect(cubit.state.board[const GridPoint(0, 0)], lDown.color);
+    expect(cubit.state.board[const GridPoint(0, 1)], lDown.color);
+    expect(cubit.state.board[const GridPoint(1, 1)], lDown.color);
+    expect(cubit.state.board[const GridPoint(2, 1)], lDown.color);
     expect(cubit.state.board[const GridPoint(1, 2)], isNull);
   });
 

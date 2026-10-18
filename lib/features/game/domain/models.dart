@@ -72,7 +72,9 @@ class Piece extends Equatable {
   };
 
   factory Piece.fromJson(Map<String, dynamic> json) {
-    final id = json['id'] as String;
+    final savedId = json['id'] as String;
+    // The retired duplicate now restores as its canonical library piece.
+    final id = savedId == 'asym' ? 'l_down' : savedId;
     final definition = PieceLibrary.byId[id];
     final savedCells = (json['cells'] as List<dynamic>)
         .map(
@@ -82,10 +84,11 @@ class Piece extends Equatable {
     return Piece(
       id: id,
       color: json['color'] as int,
-      generationWeight:
-          json['generationWeight'] as int? ?? definition?.generationWeight,
-      // Library IDs always use the current canonical definition. This also
-      // migrates an old save that still contains the retired asym cell.
+      generationWeight: savedId == 'asym'
+          ? definition?.generationWeight
+          : json['generationWeight'] as int? ?? definition?.generationWeight,
+      // Library IDs always use the current canonical definition, including
+      // legacy saves containing the retired asym fifth cell.
       cells: definition?.cells ?? savedCells,
     );
   }
@@ -159,11 +162,36 @@ class PieceLibrary {
     Piece(id: 'corner_tr', color: 6, cells: [p(0, 0), p(0, 1), p(1, 1)]),
     Piece(id: 'stair', color: 0, cells: [p(0, 0), p(1, 0), p(1, 1), p(2, 1)]),
     Piece(
-      id: 'asym',
-      color: 2,
-      cells: [p(0, 0), p(0, 1), p(1, 1), p(2, 1)],
-      generationWeight: 5,
+      id: 'corner_3_tr',
+      color: 1,
+      cells: [p(0, 0), p(0, 1), p(0, 2), p(1, 2), p(2, 2)],
     ),
+    Piece(
+      id: 'corner_3_tl',
+      color: 1,
+      cells: [p(0, 0), p(0, 1), p(0, 2), p(1, 0), p(2, 0)],
+    ),
+    Piece(
+      id: 'corner_3_bl',
+      color: 2,
+      cells: [p(0, 0), p(1, 0), p(2, 0), p(2, 1), p(2, 2)],
+    ),
+    Piece(
+      id: 'corner_3_br',
+      color: 2,
+      cells: [p(0, 2), p(1, 2), p(2, 0), p(2, 1), p(2, 2)],
+    ),
+    Piece(id: 'corner_bl', color: 6, cells: [p(0, 0), p(1, 0), p(1, 1)]),
+    Piece(id: 'corner_br', color: 6, cells: [p(0, 1), p(1, 0), p(1, 1)]),
+    Piece(
+      id: 'stair_mirror',
+      color: 0,
+      cells: [p(0, 1), p(1, 0), p(1, 1), p(2, 0)],
+    ),
+    Piece(id: 'diagonal_2_down', color: 1, cells: [p(0, 0), p(1, 1)]),
+    Piece(id: 'diagonal_2_up', color: 1, cells: [p(0, 1), p(1, 0)]),
+    Piece(id: 'diagonal_3_up', color: 2, cells: [p(0, 2), p(1, 1), p(2, 0)]),
+    Piece(id: 'diagonal_3_down', color: 2, cells: [p(0, 0), p(1, 1), p(2, 2)]),
   ];
 
   static final Map<String, Piece> byId = {

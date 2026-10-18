@@ -108,7 +108,7 @@ void main() {
   ) async {
     cubit.debugSetBoard(
       Board(),
-      pieces: [PieceLibrary.byId['asym'], null, null],
+      pieces: [PieceLibrary.byId['l_down'], null, null],
     );
     await tester.pumpWidget(app());
     expect(find.bySemanticsLabel('Piece 1, 4 blocks'), findsOneWidget);

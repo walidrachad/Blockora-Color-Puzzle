@@ -6,9 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../app/cartoon_ui.dart';
-import '../../../app/theme.dart';
 import '../../../core/game_feel_config.dart';
-import '../../../core/services/services.dart';
 import '../application/game_cubit.dart';
 import '../domain/game_rules.dart';
 import '../domain/models.dart';
@@ -17,26 +15,27 @@ import 'painters/block_skin.dart';
 import 'painters/board_painters.dart';
 import 'painters/game_painters.dart';
 
-class CartoonGameplayScreen extends StatefulWidget {
-  const CartoonGameplayScreen({super.key, this.onExit});
+class CartoonGameplayScreenV3 extends StatefulWidget {
+  const CartoonGameplayScreenV3({super.key, this.onExit});
 
   final VoidCallback? onExit;
 
   @override
-  State<CartoonGameplayScreen> createState() => _CartoonGameplayScreenState();
+  State<CartoonGameplayScreenV3> createState() => _CartoonGameplayScreenState();
 }
 
-class _CartoonGameplayScreenState extends State<CartoonGameplayScreen>
+class _CartoonGameplayScreenState extends State<CartoonGameplayScreenV3>
     with TickerProviderStateMixin, WidgetsBindingObserver {
+  static const _boardBorder = 1.0;
+  static const _boardPadding = 1.0;
+  static const _boardChrome = _boardBorder + _boardPadding;
   final _stackKey = GlobalKey();
   final _boardKey = GlobalKey();
-
   late final AnimationController _clearController;
   late final AnimationController _pickupController;
-  late final ValueNotifier<_CartoonDrag?> _drag;
-  late final ValueNotifier<int> _boardPreviewVersion;
+  late final ValueNotifier<_DragData?> _drag;
+  late final ValueNotifier<int> _previewTick;
   late final Listenable _boardRepaint;
-
   BoardGeometry? _geometry;
   RenderBox? _stackBox;
   RenderBox? _boardBox;
@@ -49,8 +48,8 @@ class _CartoonGameplayScreenState extends State<CartoonGameplayScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     unawaited(BlockSkin.instance.preload());
-    _drag = ValueNotifier<_CartoonDrag?>(null);
-    _boardPreviewVersion = ValueNotifier<int>(0);
+    _drag = ValueNotifier<_DragData?>(null);
+    _previewTick = ValueNotifier<int>(0);
     _clearController = AnimationController(
       vsync: this,
       duration: GameFeelConfig.clearTotal,
@@ -59,18 +58,14 @@ class _CartoonGameplayScreenState extends State<CartoonGameplayScreen>
       vsync: this,
       duration: GameFeelConfig.pickup,
     );
-    _boardRepaint = Listenable.merge([
-      _boardPreviewVersion,
-      _clearController,
-    ]);
+    _boardRepaint = Listenable.merge([_previewTick, _clearController]);
     _clearController.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted) {
         context.read<GameCubit>().finishClear();
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _handleTurn(context.read<GameCubit>().state);
+      if (mounted) _handleTurn(context.read<GameCubit>().state);
     });
   }
 
@@ -80,7 +75,7 @@ class _CartoonGameplayScreenState extends State<CartoonGameplayScreen>
     _clearController.dispose();
     _pickupController.dispose();
     _drag.dispose();
-    _boardPreviewVersion.dispose();
+    _previewTick.dispose();
     super.dispose();
   }
 
@@ -115,8 +110,7 @@ class _CartoonGameplayScreenState extends State<CartoonGameplayScreen>
       _clearController.duration = reducedMotion
           ? const Duration(milliseconds: 120)
           : Duration(
-              milliseconds:
-                  560 + math.min(3, math.max(0, turn.lines - 1)) * 70,
+              milliseconds: 560 + math.min(3, math.max(0, turn.lines - 1)) * 70,
             );
       _clearController.forward(from: 0);
     }
@@ -136,7 +130,7 @@ class _CartoonGameplayScreenState extends State<CartoonGameplayScreen>
     );
   }
 
-  Future<void> _leaveGame() async {
+  Future<void> _leave() async {
     final cubit = context.read<GameCubit>();
     if (cubit.state.status == GameStatus.playing ||
         cubit.state.status == GameStatus.clearing) {
@@ -163,6 +157,13 @@ class _CartoonGameplayScreenState extends State<CartoonGameplayScreen>
     if (mounted) widget.onExit?.call();
   }
 
+  void _ensureGeometry(double outerBoardSize) {
+    final contentSize = math.max(1.0, outerBoardSize - _boardChrome * 2);
+    if (_geometry == null || (_geometry!.size - contentSize).abs() > .01) {
+      _geometry = BoardGeometry.fromSize(contentSize);
+    }
+  }
+
   void _startDrag(int index, Offset globalPosition) {
     final state = context.read<GameCubit>().state;
     if (state.status != GameStatus.playing ||
@@ -174,13 +175,11 @@ class _CartoonGameplayScreenState extends State<CartoonGameplayScreen>
     }
     final stack = _stackKey.currentContext?.findRenderObject() as RenderBox?;
     final board = _boardKey.currentContext?.findRenderObject() as RenderBox?;
-    final geometry = _geometry;
-    if (stack == null || board == null || geometry == null) return;
-
+    if (stack == null || board == null || _geometry == null) return;
     _stackBox = stack;
     _boardBox = board;
     _dragBoard = state.board;
-    _drag.value = _CartoonDrag(
+    _drag.value = _DragData(
       index: index,
       piece: state.pieces[index]!,
       position: stack.globalToLocal(globalPosition),
@@ -200,50 +199,38 @@ class _CartoonGameplayScreenState extends State<CartoonGameplayScreen>
         stack == null ||
         board == null ||
         boardSnapshot == null ||
-        geometry == null) {
+        geometry == null)
       return;
-    }
-
     final stackPosition = stack.globalToLocal(globalPosition);
     final boardPosition = board.globalToLocal(globalPosition);
     final cell = geometry.cellSize;
     final piece = drag.piece;
+    final localX = boardPosition.dx - _boardChrome;
+    final localY = boardPosition.dy - _boardChrome;
     final origin = GridPoint(
-      ((boardPosition.dy -
-                  BoardGeometry.contentInset -
-                  82 -
-                  piece.height * cell / 2) /
-              cell)
-          .round(),
-      ((boardPosition.dx -
-                  BoardGeometry.contentInset -
-                  piece.width * cell / 2) /
-              cell)
-          .round(),
+      ((localY - 82 - piece.height * cell / 2) / cell).round(),
+      ((localX - piece.width * cell / 2) / cell).round(),
     );
-
     if (origin == drag.origin) {
       _drag.value = drag.copyWith(position: stackPosition);
       return;
     }
-
     final valid = evaluatePlacement(boardSnapshot, piece, origin).valid;
     _drag.value = drag.copyWith(
       position: stackPosition,
       origin: origin,
       valid: valid,
     );
-    _boardPreviewVersion.value++;
+    _previewTick.value++;
   }
 
   void _endDrag() {
     final drag = _drag.value;
     _drag.value = null;
-    _boardPreviewVersion.value++;
+    _previewTick.value++;
     _stackBox = null;
     _boardBox = null;
     _dragBoard = null;
-
     if (drag != null && drag.origin != null) {
       context.read<GameCubit>().drop(index: drag.index, origin: drag.origin!);
     } else {
@@ -256,207 +243,228 @@ class _CartoonGameplayScreenState extends State<CartoonGameplayScreen>
     return BlocConsumer<GameCubit, GameState>(
       listenWhen: (previous, current) => previous.turn != current.turn,
       listener: (_, state) => _handleTurn(state),
-      builder: (context, state) {
-        return PopScope(
-          canPop: widget.onExit == null,
-          onPopInvokedWithResult: (didPop, result) {
-            if (!didPop) unawaited(_leaveGame());
-          },
-          child: Scaffold(
-            backgroundColor: CartoonColors.paper,
-            body: SafeArea(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final landscape =
-                      constraints.maxWidth > constraints.maxHeight &&
-                      constraints.maxHeight < 600;
-                  final contentWidth = math.min(constraints.maxWidth, 610.0);
-                  final trayHeight = landscape ? 82.0 : 108.0;
-                  final headerHeight = landscape ? 62.0 : 78.0;
-                  final boardBudget = landscape
-                      ? constraints.maxHeight - 28
-                      : constraints.maxHeight - headerHeight - trayHeight - 96;
-                  final boardSize = landscape
-                      ? math.min(
-                          constraints.maxHeight - 22,
-                          constraints.maxWidth * .52,
-                        )
-                      : math.min(
-                          contentWidth - 34,
-                          math.max(180.0, boardBudget),
-                        );
-                  final innerSize = boardSize - BoardGeometry.contentInset * 2;
-                  if (_geometry == null || _geometry!.size != innerSize) {
-                    _geometry = BoardGeometry.fromSize(innerSize);
-                  }
-                  final geometry = _geometry!;
+      builder: (context, state) => PopScope(
+        canPop: widget.onExit == null,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) unawaited(_leave());
+        },
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final landscape =
+                    constraints.maxWidth > constraints.maxHeight &&
+                    constraints.maxHeight < 600;
+                return landscape
+                    ? _landscape(constraints, state)
+                    : _portrait(constraints, state);
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-                  return Stack(
-                    key: _stackKey,
-                    children: [
-                      Positioned.fill(
-                        child: DecoratedBox(
-                          decoration: const BoxDecoration(
-                            color: CartoonColors.paper,
-                          ),
-                          child: const _GameplayPaperPattern(),
-                        ),
-                      ),
-                      Align(
-                        alignment: Alignment.topCenter,
-                        child: SizedBox(
-                          width: contentWidth,
-                          child: landscape
-                              ? Row(
-                                  children: [
-                                    Expanded(
-                                      flex: 6,
-                                      child: Center(
-                                        child: _CartoonBoardArea(
-                                          state: state,
-                                          boardKey: _boardKey,
-                                          boardSize: boardSize,
-                                          geometry: geometry,
-                                          drag: _drag,
-                                          boardRepaint: _boardRepaint,
-                                          clearController: _clearController,
-                                          particles: _particles,
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 5,
-                                      child: Padding(
-                                        padding: const EdgeInsets.fromLTRB(
-                                          6,
-                                          8,
-                                          14,
-                                          8,
-                                        ),
-                                        child: Column(
-                                          children: [
-                                            _GameHud(
-                                              state: state,
-                                              onBack: _leaveGame,
-                                              onSettings: _showSettings,
-                                            ),
-                                            const Spacer(),
-                                            _CartoonTray(
-                                              pieces: state.pieces,
-                                              disabled: state.isInputLocked,
-                                              height: trayHeight,
-                                              onStart: _startDrag,
-                                              onUpdate: _updateDrag,
-                                              onEnd: _endDrag,
-                                            ),
-                                            const Spacer(),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : Column(
-                                  children: [
-                                    SizedBox(
-                                      height: headerHeight,
-                                      child: _GameHud(
-                                        state: state,
-                                        onBack: _leaveGame,
-                                        onSettings: _showSettings,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    _CartoonBoardArea(
-                                      state: state,
-                                      boardKey: _boardKey,
-                                      boardSize: boardSize,
-                                      geometry: geometry,
-                                      drag: _drag,
-                                      boardRepaint: _boardRepaint,
-                                      clearController: _clearController,
-                                      particles: _particles,
-                                    ),
-                                    const Spacer(),
-                                    _CartoonTray(
-                                      pieces: state.pieces,
-                                      disabled: state.isInputLocked,
-                                      height: trayHeight,
-                                      onStart: _startDrag,
-                                      onUpdate: _updateDrag,
-                                      onEnd: _endDrag,
-                                    ),
-                                    const SizedBox(height: 12),
-                                  ],
-                                ),
-                        ),
-                      ),
-                      ValueListenableBuilder<_CartoonDrag?>(
-                        valueListenable: _drag,
-                        builder: (context, drag, child) {
-                          if (drag == null) return const SizedBox.shrink();
-                          return AnimatedBuilder(
-                            animation: _pickupController,
-                            builder: (context, child) => Positioned(
-                              left:
-                                  drag.position.dx -
-                                  drag.piece.width * geometry.cellSize / 2,
-                              top:
-                                  drag.position.dy -
-                                  90 -
-                                  drag.piece.height * geometry.cellSize / 2,
-                              child: IgnorePointer(
-                                child: Transform.scale(
-                                  scale:
-                                      1 +
-                                      Curves.easeOut.transform(
-                                            _pickupController.value,
-                                          ) *
-                                          .06,
-                                  child: SizedBox(
-                                    width:
-                                        drag.piece.width * geometry.cellSize,
-                                    height:
-                                        drag.piece.height * geometry.cellSize,
-                                    child: CustomPaint(
-                                      painter: PiecePainter(
-                                        piece: drag.piece,
-                                        cellSize: geometry.cellSize,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      if (state.status == GameStatus.continuePrompt ||
-                          state.status == GameStatus.adLoading ||
-                          state.status == GameStatus.reviving)
-                        ContinueOverlay(state: state),
-                      if (state.status == GameStatus.results)
-                        ResultsOverlay(state: state, onExit: widget.onExit),
-                      if (state.status == GameStatus.modeSuccess ||
-                          state.status == GameStatus.modeFailure)
-                        ModeResultOverlay(
-                          state: state,
-                          onExit: widget.onExit,
-                        ),
-                    ],
-                  );
-                },
+  Widget _portrait(BoxConstraints constraints, GameState state) {
+    const headerHeight = 86.0;
+    const titleHeight = 32.0;
+    const titleGap = 8.0;
+    const trayHeight = 118.0;
+    const headerGap = 14.0;
+    const trayGap = 18.0;
+    const bottom = 12.0;
+    final contentWidth = math.min(constraints.maxWidth, 560.0);
+    final maxBoardByWidth = contentWidth - 48;
+    final maxBoardByHeight =
+        constraints.maxHeight -
+        headerHeight -
+        headerGap -
+        titleHeight -
+        titleGap -
+        trayGap -
+        trayHeight -
+        bottom;
+    final outerBoardSize = math.max(
+      190.0,
+      math.min(maxBoardByWidth, maxBoardByHeight),
+    );
+    _ensureGeometry(outerBoardSize);
+    final geometry = _geometry!;
+    return Stack(
+      key: _stackKey,
+      children: [
+        Align(
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: contentWidth,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: headerHeight,
+                    child: _Hud(
+                      state: state,
+                      onBack: _leave,
+                      onSettings: _showSettings,
+                    ),
+                  ),
+                  const SizedBox(height: headerGap),
+                  // const _BoardTitle(text: 'MAKE SPACE'),
+                  const SizedBox(height: titleGap),
+                  _BoardSurface(
+                    state: state,
+                    boardKey: _boardKey,
+                    outerSize: outerBoardSize,
+                    geometry: geometry,
+                    drag: _drag,
+                    repaint: _boardRepaint,
+                    clearController: _clearController,
+                    particles: _particles,
+                  ),
+                  const SizedBox(height: trayGap),
+                  _Tray(
+                    pieces: state.pieces,
+                    disabled: state.isInputLocked,
+                    height: trayHeight,
+                    onStart: _startDrag,
+                    onUpdate: _updateDrag,
+                    onEnd: _endDrag,
+                  ),
+                  const SizedBox(height: bottom),
+                ],
               ),
             ),
           ),
-        );
-      },
+        ),
+        _dragLayer(geometry),
+        ..._overlays(state),
+      ],
     );
   }
+
+  Widget _landscape(BoxConstraints constraints, GameState state) {
+    final contentWidth = math.min(constraints.maxWidth, 900.0);
+    final outerBoardSize = math.min(
+      constraints.maxHeight - 54,
+      contentWidth * .51,
+    );
+    _ensureGeometry(outerBoardSize);
+    final geometry = _geometry!;
+    return Stack(
+      key: _stackKey,
+      children: [
+        Center(
+          child: SizedBox(
+            width: contentWidth,
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 6,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const _BoardTitle(text: 'MAKE SPACE'),
+                      const SizedBox(height: 8),
+                      _BoardSurface(
+                        state: state,
+                        boardKey: _boardKey,
+                        outerSize: outerBoardSize,
+                        geometry: geometry,
+                        drag: _drag,
+                        repaint: _boardRepaint,
+                        clearController: _clearController,
+                        particles: _particles,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 5,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        height: 86,
+                        child: _Hud(
+                          state: state,
+                          onBack: _leave,
+                          onSettings: _showSettings,
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      _Tray(
+                        pieces: state.pieces,
+                        disabled: state.isInputLocked,
+                        height: 118,
+                        onStart: _startDrag,
+                        onUpdate: _updateDrag,
+                        onEnd: _endDrag,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        _dragLayer(geometry),
+        ..._overlays(state),
+      ],
+    );
+  }
+
+  Widget _dragLayer(
+    BoardGeometry geometry,
+  ) => ValueListenableBuilder<_DragData?>(
+    valueListenable: _drag,
+    builder: (context, drag, child) {
+      if (drag == null) return const SizedBox.shrink();
+      return AnimatedBuilder(
+        animation: _pickupController,
+        builder: (context, child) => Positioned(
+          left: drag.position.dx - drag.piece.width * geometry.cellSize / 2,
+          top:
+              drag.position.dy - 90 - drag.piece.height * geometry.cellSize / 2,
+          child: IgnorePointer(
+            child: Transform.scale(
+              scale:
+                  1 + Curves.easeOut.transform(_pickupController.value) * .06,
+              child: SizedBox(
+                width: drag.piece.width * geometry.cellSize,
+                height: drag.piece.height * geometry.cellSize,
+                child: CustomPaint(
+                  painter: PiecePainter(
+                    piece: drag.piece,
+                    cellSize: geometry.cellSize,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+
+  List<Widget> _overlays(GameState state) => [
+    if (state.status == GameStatus.continuePrompt ||
+        state.status == GameStatus.adLoading ||
+        state.status == GameStatus.reviving)
+      ContinueOverlay(state: state),
+    if (state.status == GameStatus.results)
+      ResultsOverlay(state: state, onExit: widget.onExit),
+    if (state.status == GameStatus.modeSuccess ||
+        state.status == GameStatus.modeFailure)
+      ModeResultOverlay(state: state, onExit: widget.onExit),
+  ];
 }
 
-class _GameHud extends StatelessWidget {
-  const _GameHud({
+class _Hud extends StatelessWidget {
+  const _Hud({
     required this.state,
     required this.onBack,
     required this.onSettings,
@@ -468,7 +476,7 @@ class _GameHud extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(10, 7, 10, 0),
+    padding: const EdgeInsets.fromLTRB(8, 7, 8, 0),
     child: Row(
       children: [
         RoundGameButton(
@@ -478,78 +486,90 @@ class _GameHud extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.topCenter,
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 15),
-                padding: const EdgeInsets.fromLTRB(16, 19, 16, 9),
-                decoration: BoxDecoration(
-                  color: CartoonColors.paperWarm,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: CartoonColors.outline,
-                    width: 3,
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x33000000),
-                      blurRadius: 5,
-                      offset: Offset(0, 5),
-                    ),
-                  ],
+          child: Container(
+            height: 66,
+            decoration: BoxDecoration(
+              color: CartoonColors.paperWarm,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: CartoonColors.outline, width: 3),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x2f000000),
+                  blurRadius: 5,
+                  offset: Offset(0, 5),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.star_rounded,
-                      color: CartoonColors.yellow,
-                      size: 22,
+              ],
+            ),
+            child: Column(
+              children: [
+                Container(
+                  height: 25,
+                  margin: const EdgeInsets.fromLTRB(34, 5, 34, 0),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xffff62ae), Color(0xffdf2d83)],
                     ),
-                    const SizedBox(width: 6),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 220),
-                      child: Text(
-                        '${state.score}',
-                        key: ValueKey(state.score),
-                        style: const TextStyle(
-                          color: CartoonColors.text,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                        ),
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Text(
+                    'SCORE',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.star_rounded,
+                        color: CartoonColors.yellow,
+                        size: 21,
                       ),
-                    ),
-                    if (state.combo > 1) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: CartoonColors.ribbon,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                      const SizedBox(width: 5),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 180),
                         child: Text(
-                          'x${state.combo}',
+                          '${state.score}',
+                          key: ValueKey(state.score),
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
+                            color: CartoonColors.text,
+                            fontSize: 22,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                       ),
+                      if (state.combo > 1) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: CartoonColors.ribbon,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'x${state.combo}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              const CartoonRibbon(
-                text: 'SCORE',
-                width: 150,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         const SizedBox(width: 10),
@@ -557,31 +577,68 @@ class _GameHud extends StatelessWidget {
           icon: Icons.settings_rounded,
           onTap: onSettings,
           tooltip: 'Settings',
-          // blue: true,
         ),
       ],
     ),
   );
 }
 
-class _CartoonBoardArea extends StatelessWidget {
-  const _CartoonBoardArea({
+class _BoardTitle extends StatelessWidget {
+  const _BoardTitle({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 32,
+    margin: const EdgeInsets.symmetric(horizontal: 22),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        colors: [Color(0xffff61ad), Color(0xffdc2d82)],
+      ),
+      borderRadius: BorderRadius.circular(17),
+      border: Border.all(color: Colors.white.withValues(alpha: .45)),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x30000000),
+          blurRadius: 4,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    alignment: Alignment.center,
+    child: Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 11,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 1.2,
+      ),
+    ),
+  );
+}
+
+class _BoardSurface extends StatelessWidget {
+  const _BoardSurface({
     required this.state,
     required this.boardKey,
-    required this.boardSize,
+    required this.outerSize,
     required this.geometry,
     required this.drag,
-    required this.boardRepaint,
+    required this.repaint,
     required this.clearController,
     required this.particles,
   });
 
   final GameState state;
   final GlobalKey boardKey;
-  final double boardSize;
+  final double outerSize;
   final BoardGeometry geometry;
-  final ValueListenable<_CartoonDrag?> drag;
-  final Listenable boardRepaint;
+  final ValueListenable<_DragData?> drag;
+  final Listenable repaint;
   final AnimationController clearController;
   final List<ClearParticle> particles;
 
@@ -589,105 +646,83 @@ class _CartoonBoardArea extends StatelessWidget {
   Widget build(BuildContext context) {
     final turn = state.turn;
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
-    final turnDrawData = turn == null || state.status != GameStatus.clearing
+    final drawData = turn == null || state.status != GameStatus.clearing
         ? null
         : TurnDrawData(
             clearCells: turn.clearCells,
             rows: _rows(turn.clearCells),
             columns: _columns(turn.clearCells),
           );
-
     return Stack(
+      alignment: Alignment.center,
       clipBehavior: Clip.none,
-      alignment: Alignment.topCenter,
       children: [
         Container(
           key: boardKey,
-          width: boardSize,
-          height: boardSize,
-          padding: EdgeInsets.all(BoardGeometry.contentInset),
+          width: outerSize,
+          height: outerSize,
+          padding: const EdgeInsets.all(
+            _CartoonGameplayScreenState._boardPadding,
+          ),
           decoration: BoxDecoration(
             color: CartoonColors.paper,
             borderRadius: BorderRadius.circular(27),
-            border: Border.all(color: CartoonColors.outline, width: 5),
+            border: Border.all(
+              color: CartoonColors.outline,
+              width: _CartoonGameplayScreenState._boardBorder,
+            ),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x44000000),
+                color: Color(0x40000000),
                 blurRadius: 8,
-                offset: Offset(6, 8),
+                offset: Offset(5, 7),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(19),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                CustomPaint(
-                  painter: _CartoonBoardPainter(
-                    board: state.board,
-                    geometry: geometry,
-                    hiddenCells: state.status == GameStatus.clearing
-                        ? turn?.clearCells ?? const {}
-                        : const {},
+            borderRadius: BorderRadius.circular(18),
+            child: SizedBox.expand(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CustomPaint(
+                    painter: _CreamBoardPainter(
+                      board: state.board,
+                      geometry: geometry,
+                      hiddenCells: state.status == GameStatus.clearing
+                          ? turn?.clearCells ?? const {}
+                          : const {},
+                    ),
                   ),
-                ),
-                AnimatedBuilder(
-                  animation: boardRepaint,
-                  builder: (context, child) {
-                    final activeDrag = drag.value;
-                    return CustomPaint(
-                      painter: BoardEffectsPainter(
-                        geometry: geometry,
-                        board: state.board,
-                        reducedMotion: reducedMotion,
-                        previewPiece: activeDrag?.piece,
-                        previewOrigin: activeDrag?.origin,
-                        previewValid: activeDrag?.valid ?? false,
-                        turn: turnDrawData,
-                        clearProgress: clearController.value,
-                        particles: particles,
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-        Positioned(
-          top: -14,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xfff85ba7), Color(0xffdb287f)],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withValues(alpha: .42)),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x33000000),
-                  blurRadius: 4,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Text(
-              turn?.praise ?? 'MAKE SPACE',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.2,
+                  AnimatedBuilder(
+                    animation: repaint,
+                    builder: (context, child) {
+                      final activeDrag = drag.value;
+                      return CustomPaint(
+                        painter: BoardEffectsPainter(
+                          geometry: geometry,
+                          board: state.board,
+                          reducedMotion: reducedMotion,
+                          previewPiece: activeDrag?.piece,
+                          previewOrigin: activeDrag?.origin,
+                          previewValid: activeDrag?.valid ?? false,
+                          turn: drawData,
+                          clearProgress: clearController.value,
+                          particles: particles,
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
           ),
         ),
         if (turn != null && turn.points > 0)
-          Positioned(
-            bottom: 12,
-            child: _PointBubble(points: turn.points),
+          _ScoreFadePopup(
+            key: ValueKey('score-popup-${turn.id}'),
+            points: turn.points,
+            reducedMotion: reducedMotion,
           ),
       ],
     );
@@ -710,60 +745,61 @@ class _CartoonBoardArea extends StatelessWidget {
   ];
 }
 
-class _CartoonBoardPainter extends CustomPainter {
-  _CartoonBoardPainter({
-    required this.board,
-    required this.geometry,
-    this.hiddenCells = const {},
-  }) : super(repaint: BlockSkin.instance);
+class _ScoreFadePopup extends StatelessWidget {
+  const _ScoreFadePopup({
+    super.key,
+    required this.points,
+    required this.reducedMotion,
+  });
 
-  final Board board;
-  final BoardGeometry geometry;
-  final Set<GridPoint> hiddenCells;
+  final int points;
+  final bool reducedMotion;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final empty = Paint()..color = const Color(0xffffd9a9);
-    final emptyEdge = Paint()
-      ..color = const Color(0xffedbf86)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4;
-    for (var row = 0; row < Board.size; row++) {
-      for (var col = 0; col < Board.size; col++) {
-        final point = GridPoint(row, col);
-        final rect = geometry.blockRect(point);
-        canvas.drawRRect(rect, empty);
-        canvas.drawRRect(rect, emptyEdge);
-        final value = board.cells[row][col];
-        if (value == null || hiddenCells.contains(point)) continue;
-        BlockSkin.instance.paint(canvas, geometry.cellRect(point), value);
-      }
+  Widget build(BuildContext context) {
+    if (reducedMotion) {
+      return IgnorePointer(child: _ScoreBadge(points: points));
     }
-  }
 
-  @override
-  bool shouldRepaint(covariant _CartoonBoardPainter oldDelegate) =>
-      oldDelegate.board != board ||
-      oldDelegate.geometry != geometry ||
-      oldDelegate.hiddenCells != hiddenCells;
+    return IgnorePointer(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 1250),
+        curve: Curves.linear,
+        builder: (context, t, child) {
+          final opacity = t < .18
+              ? (t / .18).clamp(0.0, 1.0)
+              : t < .62
+              ? 1.0
+              : ((1 - t) / .38).clamp(0.0, 1.0);
+          final entry = Curves.easeOutBack.transform((t / .22).clamp(0.0, 1.0));
+          return Opacity(
+            opacity: opacity,
+            child: Transform.scale(scale: .82 + entry * .18, child: child),
+          );
+        },
+        child: _ScoreBadge(points: points),
+      ),
+    );
+  }
 }
 
-class _PointBubble extends StatelessWidget {
-  const _PointBubble({required this.points});
+class _ScoreBadge extends StatelessWidget {
+  const _ScoreBadge({required this.points});
 
   final int points;
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
     decoration: BoxDecoration(
       color: CartoonColors.yellow,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(20),
       border: Border.all(color: Colors.white, width: 2),
       boxShadow: const [
         BoxShadow(
-          color: Color(0x33000000),
-          blurRadius: 4,
+          color: Color(0x38000000),
+          blurRadius: 6,
           offset: Offset(0, 4),
         ),
       ],
@@ -772,15 +808,52 @@ class _PointBubble extends StatelessWidget {
       '+$points',
       style: const TextStyle(
         color: CartoonColors.text,
-        fontSize: 17,
+        fontSize: 20,
         fontWeight: FontWeight.w900,
       ),
     ),
   );
 }
 
-class _CartoonTray extends StatelessWidget {
-  const _CartoonTray({
+class _CreamBoardPainter extends CustomPainter {
+  _CreamBoardPainter({
+    required this.board,
+    required this.geometry,
+    this.hiddenCells = const {},
+  }) : super(repaint: BlockSkin.instance);
+  final Board board;
+  final BoardGeometry geometry;
+  final Set<GridPoint> hiddenCells;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final empty = Paint()..color = const Color(0xffffd9a9);
+    final edge = Paint()
+      ..color = const Color(0xffedbf86)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    for (var row = 0; row < Board.size; row++) {
+      for (var col = 0; col < Board.size; col++) {
+        final point = GridPoint(row, col);
+        final rect = geometry.blockRect(point);
+        canvas.drawRRect(rect, empty);
+        canvas.drawRRect(rect, edge);
+        final value = board.cells[row][col];
+        if (value == null || hiddenCells.contains(point)) continue;
+        BlockSkin.instance.paint(canvas, geometry.cellRect(point), value);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CreamBoardPainter oldDelegate) =>
+      oldDelegate.board != board ||
+      oldDelegate.geometry != geometry ||
+      oldDelegate.hiddenCells != hiddenCells;
+}
+
+class _Tray extends StatelessWidget {
+  const _Tray({
     required this.pieces,
     required this.disabled,
     required this.height,
@@ -797,75 +870,73 @@ class _CartoonTray extends StatelessWidget {
   final VoidCallback onEnd;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 12),
-    child: Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.topCenter,
-      children: [
-        Container(
-          height: height,
-          padding: const EdgeInsets.fromLTRB(10, 17, 10, 9),
-          decoration: BoxDecoration(
-            color: CartoonColors.paperWarm,
-            borderRadius: BorderRadius.circular(23),
-            border: Border.all(color: CartoonColors.outline, width: 4),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x33000000),
-                blurRadius: 6,
-                offset: Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              for (var index = 0; index < pieces.length; index++)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _CartoonPieceSlot(
-                      piece: pieces[index],
-                      index: index,
-                      disabled: disabled,
-                      onStart: onStart,
-                      onUpdate: onUpdate,
-                      onEnd: onEnd,
-                    ),
+  Widget build(BuildContext context) => Stack(
+    clipBehavior: Clip.none,
+    alignment: Alignment.topCenter,
+    children: [
+      Container(
+        height: height,
+        margin: const EdgeInsets.symmetric(horizontal: 14),
+        padding: const EdgeInsets.fromLTRB(10, 25, 10, 9),
+        decoration: BoxDecoration(
+          color: CartoonColors.paperWarm,
+          borderRadius: BorderRadius.circular(23),
+          border: Border.all(color: CartoonColors.outline, width: 4),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x33000000),
+              blurRadius: 6,
+              offset: Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            for (var index = 0; index < pieces.length; index++)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: _PieceSlot(
+                    piece: pieces[index],
+                    index: index,
+                    disabled: disabled,
+                    onStart: onStart,
+                    onUpdate: onUpdate,
+                    onEnd: onEnd,
                   ),
                 ),
-            ],
+              ),
+          ],
+        ),
+      ),
+      Positioned(
+        top: -12,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xffb7e928), Color(0xff76bc14)],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: .45)),
+          ),
+          child: const Text(
+            'YOUR SHAPES',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.2,
+            ),
           ),
         ),
-        Positioned(
-          top: -13,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 6),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xffaee62e), Color(0xff75b816)],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withValues(alpha: .45)),
-            ),
-            child: const Text(
-              'YOUR SHAPES',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
+      ),
+    ],
   );
 }
 
-class _CartoonPieceSlot extends StatelessWidget {
-  const _CartoonPieceSlot({
+class _PieceSlot extends StatelessWidget {
+  const _PieceSlot({
     required this.piece,
     required this.index,
     required this.disabled,
@@ -924,33 +995,9 @@ class _CartoonPieceSlot extends StatelessWidget {
   );
 }
 
-class _GameplayPaperPattern extends StatelessWidget {
-  const _GameplayPaperPattern();
-
-  @override
-  Widget build(BuildContext context) => CustomPaint(
-    painter: _DotsPainter(),
-  );
-}
-
-class _DotsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xffe8c7ba).withValues(alpha: .22);
-    for (double y = 12; y < size.height; y += 30) {
-      for (double x = 12; x < size.width; x += 30) {
-        canvas.drawCircle(Offset(x, y), 1.4, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
 @immutable
-class _CartoonDrag {
-  const _CartoonDrag({
+class _DragData {
+  const _DragData({
     required this.index,
     required this.piece,
     required this.position,
@@ -964,12 +1011,8 @@ class _CartoonDrag {
   final GridPoint? origin;
   final bool valid;
 
-  _CartoonDrag copyWith({
-    Offset? position,
-    GridPoint? origin,
-    bool? valid,
-  }) =>
-      _CartoonDrag(
+  _DragData copyWith({Offset? position, GridPoint? origin, bool? valid}) =>
+      _DragData(
         index: index,
         piece: piece,
         position: position ?? this.position,

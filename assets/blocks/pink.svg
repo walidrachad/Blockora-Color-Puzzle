@@ -1,21 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
-  <title>pink marshmallow block</title>
+  <title>pink square beveled cube</title>
   <defs>
-    <linearGradient id="candy" x1="0" y1="0" x2="0.8" y2="1">
-      <stop offset="0" stop-color="#FFD6F0"/>
-      <stop offset="0.5" stop-color="#FF8ACE"/>
-      <stop offset="1" stop-color="#C3488F"/>
-    </linearGradient>
-    <linearGradient id="icing" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.65"/>
-      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    <linearGradient id="face" x1="0" y1="13" x2="0" y2="87" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F35B99"/>
+      <stop offset="1" stop-color="#CE306B"/>
     </linearGradient>
   </defs>
-  <!-- Edit these layers to reskin every shape, on the board and in the tray. -->
-  <rect x="3" y="7" width="94" height="91" rx="25" fill="#C3488F"/>
-  <rect x="3" y="2" width="94" height="90" rx="25" fill="url(#candy)"/>
-  <rect x="9" y="7" width="82" height="75" rx="21" fill="none" stroke="#FFFFFF" stroke-opacity="0.32" stroke-width="2"/>
-  <path d="M19 35 Q19 14 40 14 H65 Q80 14 82 29 Q50 21 19 42Z" fill="url(#icing)"/>
-  <path d="M19 26 Q23 17 35 17" fill="none" stroke="#FFFFFF" stroke-opacity="0.82" stroke-width="5" stroke-linecap="round"/>
-  <ellipse cx="78" cy="72" rx="6" ry="4" fill="#FFFFFF" fill-opacity="0.22"/>
+  <!-- Square corners; four 13-unit bevels light the cube from above-left. -->
+  <rect width="100" height="100" fill="#80173F"/>
+  <path d="M0 0H100L87 13H13Z" fill="#FFAACB"/>
+  <path d="M0 0L13 13V87L0 100Z" fill="#FF76AD"/>
+  <path d="M100 0V100L87 87V13Z" fill="#A72455"/>
+  <path d="M0 100L13 87H87L100 100Z" fill="#80173F"/>
+  <path d="M13 13H87V87H13Z" fill="url(#face)"/>
 </svg>

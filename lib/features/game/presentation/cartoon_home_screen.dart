@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../app/cartoon_ui.dart';
 import '../application/game_cubit.dart';
 import '../domain/game_modes.dart';
-import 'cartoon_game_shell.dart';
+import 'first_play_onboarding.dart';
 
 class CartoonHomeScreen extends StatelessWidget {
   const CartoonHomeScreen({super.key, required this.cubit});
@@ -19,7 +19,7 @@ class CartoonHomeScreen extends StatelessWidget {
     await Navigator.push<void>(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => CartoonGameShell(
+        builder: (_) => FirstPlayGame(
           cubit: cubit,
           onExit: () => Navigator.pop(context),
         ),

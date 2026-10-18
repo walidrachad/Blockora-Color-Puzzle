@@ -17,12 +17,14 @@ const _emptyCellGradient = LinearGradient(
 /// It is recreated only when the board's inner size changes.
 class BoardGeometry {
   static const contentInset = 6.2;
+  // Each neighboring cell contributes half of the 1 logical pixel spacing.
+  static const cellGap = 1.0;
 
   BoardGeometry.fromSize(this.size)
     : cellSize = size / Board.size,
       _cellRects = List<Rect>.generate(Board.size * Board.size, (index) {
         final cell = size / Board.size;
-        final gap = math.max(2, cell * .075);
+        const gap = cellGap / 2;
         final row = index ~/ Board.size;
         final col = index % Board.size;
         return Rect.fromLTWH(
@@ -34,7 +36,7 @@ class BoardGeometry {
       }, growable: false),
       _blockRects = List<RRect>.generate(Board.size * Board.size, (index) {
         final cell = size / Board.size;
-        final gap = math.max(2, cell * .075);
+        const gap = cellGap / 2;
         final row = index ~/ Board.size;
         final col = index % Board.size;
         final rect = Rect.fromLTWH(
@@ -43,11 +45,11 @@ class BoardGeometry {
           cell - gap * 2,
           cell - gap * 2,
         );
-        return RRect.fromRectAndRadius(rect, Radius.circular(cell * .18));
+        return RRect.fromRectAndRadius(rect, Radius.zero);
       }, growable: false),
       _bottomRects = List<RRect>.generate(Board.size * Board.size, (index) {
         final cell = size / Board.size;
-        final gap = math.max(2, cell * .075);
+        const gap = cellGap / 2;
         final row = index ~/ Board.size;
         final col = index % Board.size;
         final rect = Rect.fromLTWH(
@@ -68,7 +70,7 @@ class BoardGeometry {
       }, growable: false),
       _clearGlowRects = List<RRect>.generate(Board.size * Board.size, (index) {
         final cell = size / Board.size;
-        final gap = math.max(2, cell * .075);
+        const gap = cellGap / 2;
         final row = index ~/ Board.size;
         final col = index % Board.size;
         final rect = Rect.fromLTWH(
@@ -84,7 +86,7 @@ class BoardGeometry {
       }, growable: false),
       _clearFillRects = List<RRect>.generate(Board.size * Board.size, (index) {
         final cell = size / Board.size;
-        final gap = math.max(2, cell * .075);
+        const gap = cellGap / 2;
         final row = index ~/ Board.size;
         final col = index % Board.size;
         final rect = Rect.fromLTWH(

@@ -24,11 +24,11 @@ void main() {
     },
   );
 
-  test('saved asym pieces restore the four-cell domain shape', () {
-    final asym = PieceLibrary.byId['asym']!;
+  test('saved l_down pieces restore the four-cell domain shape', () {
+    final lDown = PieceLibrary.byId['l_down']!;
     final saved = SavedGame(
       board: Board(),
-      pieces: [asym, null, null],
+      pieces: [lDown, null, null],
       score: 4,
       best: 4,
       combo: 0,
@@ -37,8 +37,8 @@ void main() {
     );
 
     final restored = SavedGame.fromJson(saved.toJson()).pieces.first!;
-    expect(restored.id, 'asym');
-    expect(restored.cells, asym.cells);
+    expect(restored.id, 'l_down');
+    expect(restored.cells, lDown.cells);
     expect(restored.size, 4);
     expect(restored.width, 2);
     expect(restored.height, 3);
@@ -46,13 +46,13 @@ void main() {
 
   test('placement IDs survive persistence for last-piece revive', () {
     final board = Board().place(
-      PieceLibrary.byId['asym']!,
+      PieceLibrary.byId['l_down']!,
       const GridPoint(0, 0),
       placementId: 42,
     );
     final saved = SavedGame(
       board: board,
-      pieces: [PieceLibrary.byId['asym'], null, null],
+      pieces: [PieceLibrary.byId['l_down'], null, null],
       score: 4,
       best: 4,
       combo: 0,
@@ -78,7 +78,8 @@ void main() {
       ],
     });
 
-    expect(restored.cells, PieceLibrary.byId['asym']!.cells);
+    expect(restored.id, 'l_down');
+    expect(restored.cells, PieceLibrary.byId['l_down']!.cells);
     expect(restored.size, 4);
     expect(restored.cells, isNot(contains(const GridPoint(1, 2))));
   });

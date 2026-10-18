@@ -8,7 +8,7 @@ import 'package:prism_puzzle/features/game/domain/revive_policy.dart';
 void main() {
   final dot = PieceLibrary.byId['dot']!;
   final duo = PieceLibrary.byId['duo_h']!;
-  final asym = PieceLibrary.byId['asym']!;
+  final lDown = PieceLibrary.byId['l_down']!;
 
   test('all piece shapes normalize their minimum row and column to zero', () {
     final piece = Piece(
@@ -53,23 +53,23 @@ void main() {
     },
   );
 
-  test('asym is the four-cell replacement with the requested bounds', () {
-    expect(asym.cells, [
+  test('lDown is the four-cell replacement with the requested bounds', () {
+    expect(lDown.cells, [
       const GridPoint(0, 0),
       const GridPoint(0, 1),
       const GridPoint(1, 1),
       const GridPoint(2, 1),
     ]);
-    expect(asym.cells.toSet().length, 4);
-    expect(asym.size, 4);
-    expect(asym.width, 2);
-    expect(asym.height, 3);
-    expect(asym.generationWeight, 5);
-    expect(asym.cells, isNot(contains(const GridPoint(1, 2))));
+    expect(lDown.cells.toSet().length, 4);
+    expect(lDown.size, 4);
+    expect(lDown.width, 2);
+    expect(lDown.height, 3);
+    expect(lDown.generationWeight, isNull);
+    expect(lDown.cells, isNot(contains(const GridPoint(1, 2))));
   });
 
-  test('asym placement uses exactly four cells at every boundary', () {
-    final topLeft = evaluatePlacement(Board(), asym, const GridPoint(0, 0));
+  test('lDown placement uses exactly four cells at every boundary', () {
+    final topLeft = evaluatePlacement(Board(), lDown, const GridPoint(0, 0));
     expect(topLeft.valid, isTrue);
     expect(topLeft.cells, [
       const GridPoint(0, 0),
@@ -80,7 +80,7 @@ void main() {
 
     final bottomRight = evaluatePlacement(
       Board(),
-      asym,
+      lDown,
       const GridPoint(Board.size - 3, Board.size - 2),
     );
     expect(bottomRight.valid, isTrue);
@@ -92,17 +92,17 @@ void main() {
     ]);
 
     expect(
-      evaluatePlacement(Board(), asym, const GridPoint(5, 7)).valid,
+      evaluatePlacement(Board(), lDown, const GridPoint(5, 7)).valid,
       isFalse,
     );
     expect(
-      evaluatePlacement(Board(), asym, const GridPoint(6, 6)).valid,
+      evaluatePlacement(Board(), lDown, const GridPoint(6, 6)).valid,
       isFalse,
     );
     expect(
       evaluatePlacement(
         Board().withCell(const GridPoint(1, 1), 7),
-        asym,
+        lDown,
         const GridPoint(0, 0),
       ).valid,
       isFalse,
@@ -111,39 +111,39 @@ void main() {
     expect(
       evaluatePlacement(
         Board().withCell(const GridPoint(1, 2), 7),
-        asym,
+        lDown,
         const GridPoint(0, 0),
       ).valid,
       isTrue,
     );
   });
 
-  test('asym drives scoring, move scans, game over, and revive', () {
+  test('lDown drives scoring, move scans, game over, and revive', () {
     expect(
       scoreTurn(
-        piece: asym,
+        piece: lDown,
         lines: const LineSet(rows: [], columns: []),
         combo: 1,
       ).points,
       4,
     );
-    expect(hasAnyMove(Board(), [asym]), isTrue);
+    expect(hasAnyMove(Board(), [lDown]), isTrue);
 
     final full = Board(
       List.generate(Board.size, (_) => List<int?>.filled(Board.size, 1)),
     );
-    expect(isGameOver(full, [asym]), isTrue);
+    expect(isGameOver(full, [lDown]), isTrue);
 
     final blocked = full
         .withCell(const GridPoint(5, 6), null)
         .withCell(const GridPoint(5, 7), null)
         .withCell(const GridPoint(6, 7), null)
         .withCell(const GridPoint(7, 7), null);
-    expect(hasAnyMove(blocked, [asym]), isTrue);
-    final revived = MinimalRevivePolicy().rescue(full, [asym]);
-    expect(revived.pieceId, 'asym');
+    expect(hasAnyMove(blocked, [lDown]), isTrue);
+    final revived = MinimalRevivePolicy().rescue(full, [lDown]);
+    expect(revived.pieceId, 'l_down');
     expect(revived.rescuedCells.length, 4);
-    expect(canPlace(revived.board, asym), isTrue);
+    expect(canPlace(revived.board, lDown), isTrue);
   });
 
   test('detects rows, columns, and unique cells for an intersection', () {

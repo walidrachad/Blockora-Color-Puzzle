@@ -51,8 +51,10 @@ void main() {
     final first = geometry.cellRect(const GridPoint(0, 0));
     final last = geometry.cellRect(const GridPoint(7, 7));
 
-    expect(first.left, closeTo(3.15, 0.001));
-    expect(first.top, closeTo(3.15, 0.001));
+    expect(first.left, closeTo(0.5, 0.001));
+    expect(first.top, closeTo(0.5, 0.001));
+    final neighbor = geometry.cellRect(const GridPoint(0, 1));
+    expect(neighbor.left - first.right, closeTo(1, 0.001));
     expect(last.right, lessThanOrEqualTo(336));
     expect(last.bottom, lessThanOrEqualTo(336));
     expect(geometry.blockRect(const GridPoint(0, 0)).outerRect, isNotNull);

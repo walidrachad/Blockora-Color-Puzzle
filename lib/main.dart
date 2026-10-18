@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/cartoon_ui.dart';
@@ -14,7 +13,7 @@ import 'core/frame_stats_probe.dart';
 import 'core/game_feel_config.dart';
 import 'core/services/services.dart';
 import 'features/game/application/game_cubit.dart';
-import 'features/game/presentation/cartoon_game_shell.dart';
+import 'features/game/presentation/first_play_onboarding.dart';
 import 'features/game/presentation/cartoon_home_screen.dart';
 import 'features/game/presentation/combo_overlay.dart';
 
@@ -240,7 +239,7 @@ class GameScreenWithCubit extends StatelessWidget {
   final VoidCallback? onExit;
 
   @override
-  Widget build(BuildContext context) => CartoonGameShell(
+  Widget build(BuildContext context) => FirstPlayGame(
     cubit: cubit,
     onExit: onExit,
   );
