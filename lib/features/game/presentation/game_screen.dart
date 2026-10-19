@@ -1953,162 +1953,127 @@ class _ResultsOverlayState extends State<ResultsOverlay> {
   );
 }
 
-class ModeResultOverlay extends StatelessWidget {
+class ModeResultOverlay extends StatefulWidget {
   const ModeResultOverlay({super.key, required this.state, this.onExit});
-
   final GameState state;
   final VoidCallback? onExit;
 
-  void _leave(BuildContext context) {
-    if (onExit != null) {
-      onExit!();
-    } else {
-      Navigator.maybePop(context);
+  @override
+  State<ModeResultOverlay> createState() => _ModeResultOverlayState();
+}
+
+class _ModeResultOverlayState extends State<ModeResultOverlay> {
+  bool _showPopup = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startReveal();
+  }
+
+  Future<void> _startReveal() async {
+    // The celebration happens BEFORE the completion popup, not underneath it.
+    await Future<void>.delayed(const Duration(milliseconds: 1100));
+    if (mounted) setState(() => _showPopup = true);
+  }
+
+  Future<void> _nextLevel() async {
+    final current = widget.state.session.journeyLevelId;
+    if (current == null) {
+      widget.onExit?.call();
+      return;
     }
+    final number = journeyLevelById(current).levelNumber;
+    if (number >= journeyLevels.length) {
+      widget.onExit?.call();
+      return;
+    }
+    await context.read<GameCubit>().startJourneyLevel(journeyLevels[number]);
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = widget.state;
     final success = state.status == GameStatus.modeSuccess;
-    final isDaily = state.session.mode == GameMode.dailyChallenge;
-    final level = state.session.journeyLevelId == null
-        ? null
-        : journeyLevelById(state.session.journeyLevelId!);
-    final stars = success && level != null
-        ? level.starsFor(
-            score: state.score,
-            lines: state.session.linesCleared,
-            coloredCells: state.session.coloredCellsCleared,
-            moves: state.session.movesUsed,
-          )
-        : 0;
-    final objective = state.session.objective;
-    final progress = objective?.progress(
-      score: state.score,
-      lines: state.session.linesCleared,
-      coloredCells: state.session.coloredCellsCleared,
-    );
+    final journey = state.session.mode == GameMode.journey;
+    final currentLevel = journey
+      ? journeyLevelById(state.session.journeyLevelId ?? 'journey_01')
+      : null;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final show = !success || !journey || _showPopup || reduceMotion;
     return Positioned.fill(
       child: Material(
-        color: const Color(0xff030617).withValues(alpha: .90),
+        color: const Color(0xdd10183e),
         child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(26),
-            child: Container(
-              width: 340,
-              padding: const EdgeInsets.fromLTRB(24, 30, 24, 24),
-              decoration: prismPanel(radius: 28).copyWith(
-                border: Border.all(
-                  color: success ? PrismColors.yellow : PrismColors.pink,
-                ),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    success
-                        ? Icons.emoji_events_rounded
-                        : Icons.refresh_rounded,
-                    color: success ? PrismColors.yellow : PrismColors.pink,
-                    size: 34,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    success
-                        ? (isDaily ? 'Daily Complete' : 'Level Complete')
-                        : (isDaily ? 'Daily Challenge' : 'Keep Going'),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    success
-                        ? (isDaily
-                              ? 'Today is safely on your streak.'
-                              : 'A bright move unlocks the next level.')
-                        : 'Your objective was not reached this run.',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: PrismColors.muted),
-                  ),
-                  const SizedBox(height: 22),
-                  Text(
-                    '${state.score}',
-                    style: const TextStyle(
-                      fontSize: 52,
-                      fontWeight: FontWeight.w900,
-                      color: PrismColors.ink,
-                    ),
-                  ),
-                  if (objective != null && progress != null)
-                    Text(
-                      '${objective.type.label.toUpperCase()}  $progress/${objective.targetValue}',
-                      style: const TextStyle(
-                        color: PrismColors.muted,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.4,
-                      ),
-                    ),
-                  if (stars > 0) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      '${'★' * stars}${'☆' * (3 - stars)}',
-                      style: const TextStyle(
-                        color: PrismColors.yellow,
-                        fontSize: 28,
-                        letterSpacing: 5,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 28),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: ElevatedButton.icon(
-                      onPressed: success
-                          ? () => _leave(context)
-                          : () => context.read<GameCubit>().restart(),
-                      icon: Icon(
-                        success
-                            ? Icons.arrow_forward_rounded
-                            : Icons.replay_rounded,
-                      ),
-                      label: Text(
-                        success
-                            ? (isDaily ? 'DONE' : 'NEXT LEVEL')
-                            : 'TRY AGAIN',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: success
-                            ? PrismColors.cyan
-                            : PrismColors.pink,
-                        foregroundColor: PrismColors.midnight,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(17),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: success
-                        ? () => context.read<GameCubit>().restart()
-                        : () => _leave(context),
-                    icon: Icon(
-                      success ? Icons.replay_rounded : Icons.arrow_back_rounded,
-                      size: 19,
-                    ),
-                    label: Text(success ? 'Replay' : 'Back'),
-                  ),
-                ],
-              ),
+          child: AnimatedSwitcher(
+            duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 420),
+            transitionBuilder: (child, animation) => ScaleTransition(
+              scale: Tween<double>(begin: .65, end: 1).animate(
+                CurvedAnimation(parent: animation, curve: Curves.elasticOut)),
+              child: FadeTransition(opacity: animation, child: child),
             ),
+            child: !show
+              ? const Column(key: ValueKey('celebration'),
+                  mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(Icons.auto_awesome_rounded, color: Color(0xffffd54f), size: 115),
+                    SizedBox(height: 18),
+                    Text('LEVEL COMPLETE!', textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900,
+                        fontSize: 29)),
+                    Text('★  ★  ★', style: TextStyle(color: Color(0xffffd54f), fontSize: 35)),
+                  ])
+              : Container(
+                  key: const ValueKey('popup'),
+                  width: 340,
+                  margin: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(26),
+                  decoration: BoxDecoration(
+                    color: const Color(0xfffff5e4),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: const Color(0xffffcb3c), width: 4),
+                    boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 14,
+                      offset: Offset(0, 10))],
+                  ),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(success ? Icons.emoji_events_rounded : Icons.refresh_rounded,
+                      size: 62, color: const Color(0xffffb223)),
+                    const SizedBox(height: 12),
+                    Text(success ? 'LEVEL COMPLETE!' : 'TRY AGAIN',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w900,
+                        color: Color(0xff624269))),
+                    if (currentLevel != null)
+                      Text('Level ${currentLevel.levelNumber}',
+                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 12),
+                    Text('${state.score} / ${state.session.objective?.targetValue ?? 0} POINTS',
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 19)),
+                    const SizedBox(height: 12),
+                    if (success) const Text('★ ★ ★',
+                      style: TextStyle(fontSize: 32, color: Color(0xffffb223))),
+                    const SizedBox(height: 18),
+                    SizedBox(width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: success ? _nextLevel
+                          : () => context.read<GameCubit>().restart(),
+                        child: Text(success
+                          ? (currentLevel != null && currentLevel.levelNumber >= journeyLevels.length
+                              ? 'ALL LEVELS COMPLETE' : 'NEXT LEVEL')
+                          : 'RETRY'),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        if (widget.onExit != null) {
+                          widget.onExit!();
+                        } else {
+                          Navigator.maybePop(context);
+                        }
+                      },
+                      child: const Text('BACK'),
+                    ),
+                  ]),
+                ),
           ),
         ),
       ),
