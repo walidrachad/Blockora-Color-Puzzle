@@ -33,9 +33,9 @@ Future<void> main() async {
   unawaited(audio.preload());
   unawaited(ComboLottieCache.preload());
   runApp(PrismPopApp(gameCubit: gameCubit));
-  unawaited(GameAnalytics.instance.initialize());
   unawaited(
-    AdvertisingBootstrap(ads: ads, consent: consent).start().then((startup) {
+    AdvertisingBootstrap(ads: ads, consent: consent).start().then((startup) async {
+      await GameAnalytics.instance.initialize();
       return gameCubit.applyAdsConfiguration(
         startup.config,
         canRequestAds: startup.consent.canRequestAds,
