@@ -137,7 +137,10 @@ class CartoonHomeScreen extends StatelessWidget {
 
         return Scaffold(
           body: DecoratedBox(
-            decoration: cartoonBackground(),
+            decoration: const BoxDecoration(gradient: LinearGradient(
+              begin: Alignment.topCenter, end: Alignment.bottomCenter,
+              colors: [Color(0xff36a7f7), Color(0xff94ddff), Color(0xffd5efff)],
+            )),
             child: Stack(
               children: [
                 const Positioned.fill(child: _FloatingBlocks()),
@@ -156,21 +159,26 @@ class CartoonHomeScreen extends StatelessWidget {
                           child: Stack(
                             children: [
                               Positioned(
-                                top: 14,
-                                right: 18,
-                                child: _CornerMenu(
-                                  musicEnabled: state.preferences.music,
-                                  onToggleMusic: () => cubit.updatePreferences(
-                                    state.preferences.copyWith(
-                                      music: !state.preferences.music,
+                                top: 12, left: 10, right: 10,
+                                child: Row(children: [
+                                  Expanded(child: _ScoreHeader(
+                                    best: best,
+                                    onTap: () => _showBestScore(context, best),
+                                  )),
+                                  const SizedBox(width: 8),
+                                  _CornerMenu(
+                                    musicEnabled: state.preferences.music,
+                                    onToggleMusic: () => cubit.updatePreferences(
+                                      state.preferences.copyWith(
+                                        music: !state.preferences.music,
+                                      ),
                                     ),
+                                    onShowBestScore: () => _showBestScore(context, best),
                                   ),
-                                  onShowBestScore: () =>
-                                      _showBestScore(context, best),
-                                ),
+                                ]),
                               ),
                               Positioned.fill(
-                                top: 74,
+                                top: 80,
                                 child: FittedBox(
                                   fit: BoxFit.contain,
                                   alignment: Alignment.topCenter,
@@ -316,6 +324,46 @@ class CartoonHomeScreen extends StatelessWidget {
   );
 }
 
+class _ScoreHeader extends StatelessWidget {
+  const _ScoreHeader({required this.best, required this.onTap});
+  final int best;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.transparent,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: onTap,
+      child: Container(
+        height: 54,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [Color(0xff5063cb), Color(0xff26388c)]),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xffa3b5ff), width: 3),
+          boxShadow: const [BoxShadow(color: Color(0x550b3986), blurRadius: 5, offset: Offset(0, 4))],
+        ),
+        child: Row(children: [
+          const Icon(Icons.emoji_events_rounded, color: Color(0xffffcd33), size: 35),
+          const SizedBox(width: 8),
+          Flexible(child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('BEST SCORE', maxLines: 1, style: TextStyle(
+                color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
+              Text('$best', maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Color(0xffffdb4f),
+                  fontSize: 21, fontWeight: FontWeight.w900)),
+            ],
+          )),
+        ]),
+      ),
+    ),
+  );
+}
+
 class _CornerMenu extends StatelessWidget {
   const _CornerMenu({
     required this.musicEnabled,
@@ -354,46 +402,35 @@ class _Logo extends StatelessWidget {
   const _Logo();
 
   @override
-  Widget build(BuildContext context) => Stack(
-    alignment: Alignment.center,
-    clipBehavior: Clip.none,
-    children: [
-      Transform.translate(
-        offset: const Offset(0, 5),
-        child: const Text(
-          'BLOCKORA',
-          style: TextStyle(
-            color: Color(0xff70422f),
-            fontSize: 42,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 2,
-          ),
+  Widget build(BuildContext context) {
+    const name = 'BLOCKORA';
+    const palette = [
+      Color(0xff118ef0), Color(0xfffa4692), Color(0xffffb91c),
+      Color(0xff35bd68), Color(0xff9452dd), Color(0xffffbb20),
+      Color(0xffec4d74), Color(0xff168def),
+    ];
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.workspace_premium_rounded, size: 42,
+          color: Color(0xffffca32),
+          shadows: [Shadow(color: Color(0x77042d75), offset: Offset(0, 4), blurRadius: 5)]),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(name.length, (i) => Text(name[i],
+            style: TextStyle(
+              fontSize: 42, fontWeight: FontWeight.w900, height: 1.1,
+              color: palette[i], letterSpacing: -2,
+              shadows: const [
+                Shadow(color: Colors.white, offset: Offset(-1, -2), blurRadius: 2),
+                Shadow(color: Color(0xff31528b), offset: Offset(2, 5)),
+              ],
+            ),
+          )),
         ),
-      ),
-      const Text(
-        'BLOCKORA',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 42,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 2,
-          shadows: [
-            Shadow(color: CartoonColors.ribbon, blurRadius: 2),
-            Shadow(color: Color(0x55000000), blurRadius: 5),
-          ],
-        ),
-      ),
-      const Positioned(
-        right: 18,
-        top: -7,
-        child: Icon(
-          Icons.star_rounded,
-          color: CartoonColors.yellow,
-          size: 28,
-        ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }
 
 class _Stars extends StatelessWidget {
