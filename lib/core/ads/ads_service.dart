@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'ads_config.dart';
+import '../analytics/game_analytics.dart';
 import 'consent.dart';
 
 enum AdOutcome {
@@ -320,7 +321,9 @@ class BannerAdController {
         size: size,
         request: AdRequest(nonPersonalizedAds: nonPersonalizedAds),
         listener: BannerAdListener(
+          onAdImpression: (_) => GameAnalytics.instance.event('ad_impression', {'ad_format': 'banner', 'ad_platform': 'admob'}),
           onAdLoaded: (loadedAd) {
+            GameAnalytics.instance.event('ad_loaded', {'ad_format': 'banner'});
             if (_disposed || loadedAd is! BannerAd) {
               loadedAd.dispose();
               return;
@@ -331,6 +334,7 @@ class BannerAdController {
             _ad.value = loadedAd;
           },
           onAdFailedToLoad: (failedAd, _) {
+            GameAnalytics.instance.event('ad_load_failed', {'ad_format': 'banner'});
             failedAd.dispose();
             if (_ad.value == failedAd) _ad.value = null;
             _adSize = null;
@@ -587,6 +591,7 @@ class GoogleAdsService extends AdvancedAdsService {
       request: _request(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
+          GameAnalytics.instance.event('ad_loaded', {'ad_format': 'rewarded'});
           _rewardedLoading = false;
           _rewardedRetry?.cancel();
           _rewardedRetry = null;
@@ -604,6 +609,7 @@ class GoogleAdsService extends AdvancedAdsService {
           _rewardedReady.value = true;
         },
         onAdFailedToLoad: (error) {
+          GameAnalytics.instance.event('ad_load_failed', {'ad_format': 'rewarded'});
           _rewardedLoading = false;
           _rewardedReady.value = false;
           _scheduleRewardedRetry();
@@ -638,6 +644,7 @@ class GoogleAdsService extends AdvancedAdsService {
       request: _request(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
+          GameAnalytics.instance.event('ad_loaded', {'ad_format': 'interstitial'});
           _interstitialLoading = false;
           _interstitialRetry?.cancel();
           _interstitialRetry = null;
@@ -654,6 +661,7 @@ class GoogleAdsService extends AdvancedAdsService {
           _interstitialUnitId = unitId;
         },
         onAdFailedToLoad: (_) {
+          GameAnalytics.instance.event('ad_load_failed', {'ad_format': 'interstitial'});
           _interstitialLoading = false;
           _scheduleInterstitialRetry();
         },
@@ -705,8 +713,11 @@ class GoogleAdsService extends AdvancedAdsService {
     }
 
     ad.fullScreenContentCallback = FullScreenContentCallback<RewardedAd>(
-      onAdShowedFullScreenContent: (_) =>
-          frequency.recordRewardedShown(_clock()),
+      onAdShowedFullScreenContent: (_) {
+        frequency.recordRewardedShown(_clock());
+        GameAnalytics.instance.event('ad_shown', {'ad_format': 'rewarded'});
+      },
+      onAdImpression: (_) => GameAnalytics.instance.event('ad_impression', {'ad_format': 'rewarded', 'ad_platform': 'admob'}),
       onAdDismissedFullScreenContent: (_) => finish(
         earned ? AdOutcome.rewarded : AdOutcome.dismissedWithoutReward,
       ),
@@ -716,7 +727,10 @@ class GoogleAdsService extends AdvancedAdsService {
     try {
       await ad.show(
         onUserEarnedReward: (_, _) {
-          if (!earned) earned = true;
+          if (!earned) {
+            earned = true;
+            GameAnalytics.instance.event('rewarded_ad_earned', {'ad_format': 'rewarded'});
+          }
         },
       );
     } catch (_) {
@@ -768,7 +782,9 @@ class GoogleAdsService extends AdvancedAdsService {
     ad.fullScreenContentCallback = FullScreenContentCallback<InterstitialAd>(
       onAdShowedFullScreenContent: (_) {
         frequency.recordInterstitialShown(_clock());
+        GameAnalytics.instance.event('ad_shown', {'ad_format': 'interstitial'});
       },
+      onAdImpression: (_) => GameAnalytics.instance.event('ad_impression', {'ad_format': 'interstitial', 'ad_platform': 'admob'}),
       onAdDismissedFullScreenContent: (_) => finish(AdOutcome.dismissed),
       onAdFailedToShowFullScreenContent: (_, _) =>
           finish(AdOutcome.failedToShow),

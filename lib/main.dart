@@ -7,6 +7,8 @@ import 'app/cartoon_ui.dart';
 import 'app/theme.dart';
 import 'app/localization.dart';
 import 'core/ads/ads_bootstrap.dart';
+import 'core/analytics/game_analytics.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/ads/consent.dart';
 import 'core/audio/game_audio_service.dart';
 import 'core/frame_stats_probe.dart';
@@ -20,6 +22,7 @@ import 'features/game/presentation/combo_overlay.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   FrameStatsProbe.install();
+  Bloc.observer = GameAnalyticsObserver();
   final preferences = await SharedPreferences.getInstance();
   final storage = SharedPreferencesStorage(preferences);
   final consent = GoogleConsentService();
@@ -31,7 +34,8 @@ Future<void> main() async {
   unawaited(ComboLottieCache.preload());
   runApp(PrismPopApp(gameCubit: gameCubit));
   unawaited(
-    AdvertisingBootstrap(ads: ads, consent: consent).start().then((startup) {
+    AdvertisingBootstrap(ads: ads, consent: consent).start().then((startup) async {
+      await GameAnalytics.instance.initialize();
       return gameCubit.applyAdsConfiguration(
         startup.config,
         canRequestAds: startup.consent.canRequestAds,
