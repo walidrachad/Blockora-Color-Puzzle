@@ -7,6 +7,7 @@ import '../../../app/cartoon_ui.dart';
 import '../application/game_cubit.dart';
 import '../domain/game_modes.dart';
 import 'first_play_onboarding.dart';
+import 'level_selection_screen.dart';
 
 class CartoonHomeScreen extends StatelessWidget {
   const CartoonHomeScreen({super.key, required this.cubit});
@@ -280,6 +281,18 @@ class CartoonHomeScreen extends StatelessWidget {
                                                 width: 280,
                                               ),
                                             ],
+                                          ),
+                                          const SizedBox(height: 12),
+                                          GlossyGameButton(
+                                            label: 'LEVELS',
+                                            icon: Icons.map_rounded,
+                                            green: false,
+                                            onTap: () => Navigator.push<void>(
+                                              context,
+                                              MaterialPageRoute<void>(
+                                                builder: (_) => LevelSelectionScreen(cubit: cubit),
+                                              ),
+                                            ),
                                           ),
                                           const SizedBox(height: 18),
                                           const Row(

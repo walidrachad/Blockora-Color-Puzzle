@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../app/cartoon_ui.dart';
 import '../application/game_cubit.dart';
+import '../domain/game_modes.dart';
+import '../domain/mode_catalog.dart';
 import 'cartoon_gameplay_screen.dart';
 
 class CartoonGameShell extends StatelessWidget {
@@ -38,7 +40,16 @@ class CartoonGameShell extends StatelessWidget {
         SafeArea(
           child: BlocProvider.value(
             value: cubit,
-            child: CartoonGameplayScreenV3(onExit: onExit),
+            child: Stack(children: [
+              CartoonGameplayScreenV3(onExit: onExit),
+              BlocBuilder<GameCubit, GameState>(builder: (context, state) {
+                if (state.session.mode != GameMode.journey) return const SizedBox.shrink();
+                final level = journeyLevelById(state.session.journeyLevelId ?? 'journey_01');
+                return Positioned(left: 72, right: 72, top: 0,
+                  child: IgnorePointer(child: _LevelBar(level: level.levelNumber,
+                    score: state.score, target: level.objective.targetValue)));
+              }),
+            ]),
           ),
         ),
       ],
@@ -104,5 +115,33 @@ class _CornerToy extends StatelessWidget {
         ],
       ),
     ),
+  );
+}
+
+class _LevelBar extends StatelessWidget {
+  const _LevelBar({required this.level, required this.score, required this.target});
+  final int level;
+  final int score;
+  final int target;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    decoration: BoxDecoration(color: const Color(0xeefcf2df),
+      borderRadius: BorderRadius.circular(14)),
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Text('LEVEL $level     $score / $target', maxLines: 1,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
+      const SizedBox(height: 3),
+      TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: (score / target).clamp(0.0, 1.0)),
+        duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero : const Duration(milliseconds: 480),
+        builder: (_, value, __) => LinearProgressIndicator(value: value,
+          minHeight: 9, borderRadius: BorderRadius.circular(9),
+          backgroundColor: const Color(0xffcbd6e7),
+          color: value >= 1 ? const Color(0xffffc92b) : const Color(0xff54bf69)),
+      ),
+    ]),
   );
 }

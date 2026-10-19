@@ -7,6 +7,8 @@ import 'app/cartoon_ui.dart';
 import 'app/theme.dart';
 import 'app/localization.dart';
 import 'core/ads/ads_bootstrap.dart';
+import 'core/levels/remote_levels.dart';
+import 'features/game/domain/mode_catalog.dart';
 import 'core/analytics/game_analytics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/ads/consent.dart';
@@ -28,6 +30,7 @@ Future<void> main() async {
   final consent = GoogleConsentService();
   final ads = GoogleAdsService(consent: consent);
   final audio = LocalGameAudioService();
+  useDefaultScoreLevels();
   final gameCubit = GameCubit(storage: storage, ads: ads, audio: audio);
   await gameCubit.initialize();
   unawaited(audio.preload());
@@ -35,6 +38,7 @@ Future<void> main() async {
   runApp(PrismPopApp(gameCubit: gameCubit));
   unawaited(
     AdvertisingBootstrap(ads: ads, consent: consent).start().then((startup) async {
+      await RemoteLevels.load();
       await GameAnalytics.instance.initialize();
       return gameCubit.applyAdsConfiguration(
         startup.config,

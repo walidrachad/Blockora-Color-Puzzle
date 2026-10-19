@@ -1,9 +1,11 @@
+import 'dart:convert';
+
 import 'game_modes.dart';
 import 'models.dart';
 
 /// Locally-defined Journey content. Keeping the catalog as immutable data makes
 /// the engine deterministic and avoids a network dependency for level play.
-final List<JourneyLevel> journeyLevels = List.unmodifiable(
+List<JourneyLevel> journeyLevels = List.unmodifiable(
   List<JourneyLevel>.generate(30, _buildLevel),
 );
 
@@ -82,4 +84,56 @@ Board _initialBoard(JourneyObjectiveType type, int index) {
     }
   }
   return Board(cells);
+}
+
+
+// Remote Config key: blockora_levels_json. The fallback is intentionally playable offline.
+// Only score targets are accepted remotely; shape rules remain the canonical library.
+const defaultLevelTargets = <int>[500, 1000, 1800, 2800, 4000, 5500, 7500, 10000, 13000, 17000];
+
+List<JourneyLevel> _scoreLevels(List<int> targets) => List.unmodifiable(
+  List.generate(targets.length, (index) {
+    final number = index + 1;
+    final target = targets[index];
+    return JourneyLevel(
+      id: 'journey_${number.toString().padLeft(2, '0')}',
+      levelNumber: number,
+      initialBoard: Board(),
+      randomSeed: 20261019 + index * 7919,
+      objective: JourneyObjective(type: JourneyObjectiveType.score, targetValue: target),
+      moveLimit: null,
+      availablePieceRules: PieceLibrary.byId.keys.toList(growable: false),
+      starThresholds: JourneyStarThresholds(one: target, two: target, three: target),
+      reward: 'Level completed',
+    );
+  }),
+);
+
+/// Returns false for malformed, duplicate, non-increasing or unsafe remote targets.
+bool applyLevelsJson(String raw) {
+  try {
+    final payload = jsonDecode(raw);
+    if (payload is! Map || payload['levels'] is! List) return false;
+    final entries = payload['levels'] as List;
+    if (entries.isEmpty || entries.length > 100) return false;
+    final targets = <int>[];
+    for (var i = 0; i < entries.length; i++) {
+      final item = entries[i];
+      if (item is! Map || item['level'] != i + 1 || item['target'] is! int) return false;
+      final value = item['target'] as int;
+      if (value < 1 || value > 100000000 || (targets.isNotEmpty && value <= targets.last)) {
+        return false;
+      }
+      targets.add(value);
+    }
+    journeyLevels = _scoreLevels(targets);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/// Default catalog for new Level Mode; older Journey content remains in source.
+void useDefaultScoreLevels() {
+  journeyLevels = _scoreLevels(defaultLevelTargets);
 }
