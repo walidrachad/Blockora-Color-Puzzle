@@ -508,7 +508,6 @@ class GameCubit extends Cubit<GameState> {
   void cancelDrag() {
     if (state.dragIndex == null) return;
     if (state.preferences.vibration) _haptics.medium();
-    GameAnalytics.instance.event('drag_cancelled', {'game_mode': state.session.mode.name});
     _audio.play('invalid_drop');
     emit(state.copyWith(dragIndex: null));
   }
@@ -519,7 +518,7 @@ class GameCubit extends Cubit<GameState> {
     if (piece == null) return;
     final allowedPieceIds = _allowedPieceIds(state.session);
     if (allowedPieceIds != null && !allowedPieceIds.contains(piece.id)) {
-      GameAnalytics.instance.event('placement_difficulty', {'reason': 'piece_not_allowed', 'game_mode': state.session.mode.name});
+      GameAnalytics.instance.event('invalid_placement', {'reason': 'piece_not_allowed', 'game_mode': state.session.mode.name, 'move_number': state.session.movesUsed});
       cancelDrag();
       return;
     }
