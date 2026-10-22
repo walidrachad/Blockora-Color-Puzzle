@@ -77,7 +77,6 @@ class GameAnalyticsObserver extends BlocObserver {
       ..._common(state),
       'outcome': outcome,
       'duration_seconds': _duration(cubit),
-      'invalid_moves': _failedMoves[cubit] ?? 0,
       'is_new_best': state.score > 0 && state.score >= state.best ? 1 : 0,
     });
     _ended[cubit] = true;
