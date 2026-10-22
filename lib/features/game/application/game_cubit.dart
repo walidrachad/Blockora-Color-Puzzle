@@ -4,6 +4,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/ads/ads_config.dart';
+import '../../../core/analytics/game_analytics.dart';
 import '../../../core/ads/consent.dart';
 import '../../../core/game_feel_config.dart';
 import '../../../core/services/services.dart';
@@ -507,6 +508,7 @@ class GameCubit extends Cubit<GameState> {
   void cancelDrag() {
     if (state.dragIndex == null) return;
     if (state.preferences.vibration) _haptics.medium();
+    GameAnalytics.instance.event('drag_cancelled', {'game_mode': state.session.mode.name});
     _audio.play('invalid_drop');
     emit(state.copyWith(dragIndex: null));
   }
@@ -517,11 +519,13 @@ class GameCubit extends Cubit<GameState> {
     if (piece == null) return;
     final allowedPieceIds = _allowedPieceIds(state.session);
     if (allowedPieceIds != null && !allowedPieceIds.contains(piece.id)) {
+      GameAnalytics.instance.event('placement_difficulty', {'reason': 'piece_not_allowed', 'game_mode': state.session.mode.name});
       cancelDrag();
       return;
     }
     final placement = evaluatePlacement(state.board, piece, origin);
     if (!placement.valid) {
+      GameAnalytics.instance.event('invalid_placement', {'reason': 'occupied_or_outside', 'game_mode': state.session.mode.name, 'move_number': state.session.movesUsed});
       cancelDrag();
       return;
     }
@@ -791,6 +795,7 @@ class GameCubit extends Cubit<GameState> {
 
   void expireContinue() {
     if (state.status != GameStatus.continuePrompt) return;
+    GameAnalytics.instance.event('revive_declined', {'game_mode': state.session.mode.name, 'score': state.score});
     _audio.play('game_over');
     emit(
       state.copyWith(
