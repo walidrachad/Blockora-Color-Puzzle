@@ -45,6 +45,9 @@ class GameAnalytics {
 class GameAnalyticsObserver extends BlocObserver {
   final Map<GameCubit, DateTime> _started = {};
   final Map<GameCubit, int> _lastTurnId = {};
+  final Map<GameCubit, int> _failedMoves = {};
+  final Map<GameCubit, int> _replays = {};
+  final Map<GameCubit, bool> _ended = {};
 
   String _mode(GameState state) => state.session.mode.name;
 
@@ -61,6 +64,8 @@ class GameAnalyticsObserver extends BlocObserver {
   void _start(GameCubit cubit, GameState state) {
     _started[cubit] = DateTime.now();
     _lastTurnId.remove(cubit);
+    _failedMoves[cubit] = 0;
+    _ended[cubit] = false;
     GameAnalytics.instance.event('game_start', {'game_mode': _mode(state)});
   }
 
@@ -72,7 +77,23 @@ class GameAnalyticsObserver extends BlocObserver {
       ..._common(state),
       'outcome': outcome,
       'duration_seconds': _duration(cubit),
+      'is_new_best': state.score > 0 && state.score >= state.best ? 1 : 0,
     });
+    _ended[cubit] = true;
+  }
+
+  /// Track failed placements in aggregate; avoid a high-volume event per drag.
+  void recordInvalidDrop(GameCubit cubit, String reason) {
+    _failedMoves[cubit] = (_failedMoves[cubit] ?? 0) + 1;
+    final failures = _failedMoves[cubit]!;
+    if (failures == 1 || failures == 5 || failures == 10) {
+      GameAnalytics.instance.event('placement_difficulty', {
+        'reason': reason,
+        'failed_attempts': failures,
+        'game_mode': _mode(cubit.state),
+        'moves': cubit.state.session.movesUsed,
+      });
+    }
   }
 
   @override
@@ -93,6 +114,13 @@ class GameAnalyticsObserver extends BlocObserver {
          before.score != 0 ||
          before.session.movesUsed != 0 ||
          !before.hasSavedSession)) {
+      if (_ended[bloc] == true) {
+        _replays[bloc] = (_replays[bloc] ?? 0) + 1;
+        GameAnalytics.instance.event('play_again', {
+          'game_mode': _mode(after),
+          'replay_number': _replays[bloc]!,
+        });
+      }
       _start(bloc, after);
     }
 
@@ -126,6 +154,13 @@ class GameAnalyticsObserver extends BlocObserver {
       }
     }
 
+    if (before.score < 500 && after.score >= 500 ||
+        before.score < 1000 && after.score >= 1000 ||
+        before.score < 2500 && after.score >= 2500 ||
+        before.score < 5000 && after.score >= 5000) {
+      final milestone = [500, 1000, 2500, 5000].where((x) => before.score < x && after.score >= x).last;
+      GameAnalytics.instance.event('score_milestone', {'milestone': milestone, 'game_mode': _mode(after)});
+    }
     if (before.status != GameStatus.continuePrompt &&
         after.status == GameStatus.continuePrompt) {
       GameAnalytics.instance.event('revive_offered', _common(after));
@@ -161,6 +196,9 @@ class GameAnalyticsObserver extends BlocObserver {
     if (bloc is GameCubit) {
       _started.remove(bloc);
       _lastTurnId.remove(bloc);
+      _failedMoves.remove(bloc);
+      _replays.remove(bloc);
+      _ended.remove(bloc);
     }
     super.onClose(bloc);
   }

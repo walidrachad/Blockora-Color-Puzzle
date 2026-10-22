@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../app/cartoon_ui.dart';
+import '../../../core/analytics/game_analytics.dart';
 import '../application/game_cubit.dart';
 import '../domain/models.dart';
 import 'cartoon_game_shell.dart';
@@ -29,9 +30,11 @@ class _FirstPlayGameState extends State<FirstPlayGame> {
   void initState() {
     super.initState();
     _needsTutorial = !widget.cubit.state.preferences.hasCompletedOnboarding;
+    if (_needsTutorial) GameAnalytics.instance.event('tutorial_started');
   }
 
   Future<void> _complete() async {
+    GameAnalytics.instance.event('tutorial_completed');
     await widget.cubit.updatePreferences(
       widget.cubit.state.preferences.copyWith(hasCompletedOnboarding: true),
     );
