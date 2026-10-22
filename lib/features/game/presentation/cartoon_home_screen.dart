@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../app/cartoon_ui.dart';
+import '../../../core/analytics/game_analytics.dart';
 import '../application/game_cubit.dart';
 import '../domain/game_modes.dart';
 import 'first_play_onboarding.dart';
@@ -15,8 +16,10 @@ class CartoonHomeScreen extends StatelessWidget {
   final GameCubit cubit;
 
   Future<void> _openGame(BuildContext context, {required bool fresh}) async {
+    GameAnalytics.instance.event('home_play_tapped', {'new_run': fresh ? 1 : 0});
     if (fresh) await cubit.startClassic();
     if (!context.mounted) return;
+    final enteredAt = DateTime.now();
     await Navigator.push<void>(
       context,
       MaterialPageRoute<void>(
@@ -26,6 +29,12 @@ class CartoonHomeScreen extends StatelessWidget {
         ),
       ),
     );
+    GameAnalytics.instance.event('game_screen_exited', {
+      'screen_seconds': DateTime.now().difference(enteredAt).inSeconds,
+      'status': cubit.state.status.name,
+      'score': cubit.state.score,
+      'moves': cubit.state.session.movesUsed,
+    });
   }
 
   Future<void> _showBestScore(BuildContext context, int best) async {
